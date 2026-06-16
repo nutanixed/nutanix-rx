@@ -17,6 +17,14 @@ Cluster Manager and admin reservation UI for Nutanix lab operations.
 
 ## Local run (recommended via compose stack)
 
+Create your local environment file first:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with real credentials, endpoints, and IPs for your lab.
+
 From your `plex-docker` root:
 
 ```bash
