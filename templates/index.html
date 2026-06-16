@@ -1690,25 +1690,35 @@
 
     <!-- Disclaimer Modal -->
     <div id="disclaimer-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="flex items-center justify-center min-h-screen px-4 py-6 sm:p-6">
             <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-                <div class="absolute inset-0 bg-slate-900 opacity-90"></div>
+                <div class="absolute inset-0 bg-slate-950/75 backdrop-blur-sm"></div>
             </div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border-t-4 border-rose-500">
-                <div class="bg-white px-8 pt-8 pb-8 text-center">
-                    <div class="mb-6 flex justify-center">
-                        <div class="bg-rose-100 p-4 rounded-full">
-                            <i class="fas fa-exclamation-triangle text-rose-600 text-4xl"></i>
+            <div class="relative w-full max-w-lg">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden">
+                    <div class="px-6 py-5 border-b border-slate-100 bg-slate-50/70">
+                        <div class="flex items-center gap-3">
+                            <div class="h-10 w-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900 tracking-tight">System Disclaimer</h3>
+                                <p class="text-xs text-slate-500">Operational confirmation</p>
+                            </div>
                         </div>
                     </div>
-                    <h3 class="text-2xl font-bold text-slate-900 mb-4 uppercase tracking-tight">System Disclaimer</h3>
-                    <p class="text-slate-600 mb-8 leading-relaxed text-sm">
-                        These management functions should be used with <strong>caution</strong>. Performing these operations can <strong>disrupt cluster services</strong> and potentially impact all <strong>running workloads</strong>.
-                    </p>
-                    <button onclick="toggleDisclaimer()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl transition-all uppercase tracking-widest text-xs shadow-lg">
-                        I Understand & Proceed
-                    </button>
+                    <div class="p-6">
+                        <p class="text-slate-600 leading-relaxed text-sm mb-5">
+                            These management functions should be used with <strong>caution</strong>. Performing these operations can
+                            <strong>disrupt cluster services</strong> and potentially impact all <strong>running workloads</strong>.
+                        </p>
+                        <div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-800 font-semibold mb-6">
+                            Proceed only if you understand the operational impact and have confirmed maintenance intent.
+                        </div>
+                        <button onclick="toggleDisclaimer()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl transition-all uppercase tracking-widest text-xs shadow-sm">
+                            I Understand & Proceed
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
