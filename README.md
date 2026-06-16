@@ -27,16 +27,16 @@ docker compose version
 
 ## 2) Project layout
 
-This repository is designed to run as the `ntnx-cm` service inside your existing `plex-docker` stack.
+This repository is designed to run as an `ntnx-cm` service inside your existing Docker Compose stack.
 
 Typical layout:
 
-- `plex-docker/docker-compose.yml`
-- `plex-docker/ntnx-cm/` (this repo)
+- `<stack-root>/docker-compose.yml`
+- `<stack-root>/ntnx-cm/` (this repo)
 
 ## 3) Environment configuration
 
-From `ntnx-cm`:
+From this repository directory:
 
 ```bash
 cp .env.example .env
@@ -55,7 +55,7 @@ Do **not** commit `.env`.
 
 ## 4) Build and deploy
 
-From `plex-docker` root:
+From your Compose stack root (where `docker-compose.yml` lives):
 
 ```bash
 docker compose up -d --build ntnx-cm
@@ -98,13 +98,13 @@ If exposing behind a reverse proxy under `/cm`:
 
 ## 7) Update procedure
 
-From `ntnx-cm` repo:
+From this repository:
 
 ```bash
 git pull
 ```
 
-From `plex-docker` root:
+From your Compose stack root:
 
 ```bash
 docker compose up -d --build ntnx-cm
