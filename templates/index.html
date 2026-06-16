@@ -1,0 +1,1717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cluster Manager</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Full redesign pass: mimic ntnxlablinks tile language while preserving controls. */
+        body {
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+        nav {
+            position: relative !important;
+            top: auto !important;
+            z-index: 10 !important;
+            border-bottom: 1px solid rgb(226 232 240 / 1);
+            box-shadow: none !important;
+        }
+        main {
+            max-width: 92rem !important;
+            padding-top: 2rem !important;
+            padding-bottom: 2.5rem !important;
+        }
+        main section > div.relative.overflow-hidden,
+        #automation-override-notice,
+        main > div.grid > div,
+        main > div.grid > a {
+            background: #fff !important;
+            border: 1px solid rgb(226 232 240 / 1) !important;
+            border-radius: 1rem !important;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+        }
+        main section > div.relative.overflow-hidden > .pointer-events-none {
+            display: none !important;
+        }
+        main > div.grid > a {
+            color: #0f172a !important;
+        }
+        main > div.grid > a:hover {
+            transform: none !important;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+        }
+        .group.rounded-2xl.border,
+        .rounded-2xl.border,
+        .rounded-xl.border,
+        .granular-content .bg-white.rounded-2xl {
+            border: 1px solid rgb(226 232 240 / 1) !important;
+            border-radius: 1rem !important;
+            background: #fff !important;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+        }
+        .granular-content .grid {
+            gap: 1rem !important;
+        }
+        .granular-content .grid > div {
+            min-height: 210px;
+            padding: 1rem !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: box-shadow 120ms ease;
+            border-radius: 1rem !important;
+        }
+        .granular-content .grid > div:hover {
+            box-shadow: 0 6px 20px rgba(15, 23, 42, 0.10) !important;
+        }
+        .granular-content .grid > div .bg-blue-100,
+        .granular-content .grid > div .bg-emerald-100,
+        .granular-content .grid > div .bg-rose-100,
+        .granular-content .grid > div .bg-amber-100,
+        .granular-content .grid > div .bg-violet-100,
+        .granular-content .grid > div .bg-indigo-100,
+        .granular-content .grid > div .bg-sky-100 {
+            border-radius: 0.85rem !important;
+            padding: 0.9rem !important;
+        }
+        .granular-content button,
+        #refresh-status-btn,
+        nav a.bg-slate-100,
+        nav button.bg-slate-100 {
+            background-image: none !important;
+            background-color: #f8fafc !important;
+            color: #334155 !important;
+            border: 1px solid rgb(226 232 240 / 1) !important;
+            box-shadow: none !important;
+        }
+        .granular-content button:hover,
+        #refresh-status-btn:hover,
+        nav a.bg-slate-100:hover,
+        nav button.bg-slate-100:hover {
+            background-color: #eff6ff !important;
+            color: #2563eb !important;
+        }
+        .granular-content button.bg-blue-600 {
+            background-color: #2563eb !important;
+            color: #fff !important;
+            border-color: #2563eb !important;
+        }
+        .granular-tab {
+            border: 1px solid rgb(226 232 240 / 1) !important;
+            border-radius: 0.75rem !important;
+            background: #fff !important;
+            color: #475569 !important;
+        }
+        .granular-tab.bg-blue-600 {
+            background: #2563eb !important;
+            color: #fff !important;
+            border-color: #2563eb !important;
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25) !important;
+        }
+        .btn-loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        dialog::backdrop {
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(6px);
+        }
+        dialog[open] {
+            animation: dialog-in 0.22s ease-out;
+        }
+        @keyframes dialog-in {
+            from { opacity: 0; transform: scale(0.96) translateY(8px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-900">
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-slate-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-3">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="h-8 w-auto">
+                    <h1 class="text-xl font-bold tracking-tight text-slate-900">CLUSTER <span class="text-blue-600 font-extrabold">MANAGER</span></h1>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="refresh-status-btn" onclick="forceRefreshStatus(this)" class="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors flex items-center gap-2 bg-slate-100 hover:bg-blue-50 px-4 py-2 rounded-lg group">
+                        <i class="fas fa-sync-alt text-sm group-[.btn-loading]:fa-spin"></i>
+                        <span>Refresh</span>
+                    </button>
+                    <button onclick="toggleHelp()" class="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors flex items-center gap-2 bg-slate-100 hover:bg-blue-50 px-4 py-2 rounded-lg">
+                        <i class="fas fa-question-circle text-sm"></i>
+                        <span>Help</span>
+                    </button>
+                    <button onclick="toggleConsoles()" class="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors flex items-center gap-2 bg-slate-100 hover:bg-blue-50 px-4 py-2 rounded-lg">
+                        <i class="fas fa-terminal text-sm"></i>
+                        <span>Console</span>
+                    </button>
+                    <a href="{{ url_for('admin') }}" class="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors flex items-center gap-2 bg-slate-100 hover:bg-blue-50 px-4 py-2 rounded-lg">
+                        <i class="fas fa-calendar-alt text-sm"></i>
+                        <span>Reservations</span>
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="text-sm font-semibold text-slate-600 hover:text-red-600 transition-colors flex items-center gap-2 bg-slate-100 hover:bg-red-50 px-4 py-2 rounded-lg">
+                        <i class="fas fa-sign-out-alt text-sm"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Automation Override Notice -->
+        <div id="automation-override-notice" class="mb-6 hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-r from-indigo-50/80 to-blue-50/80 p-5 shadow-sm ring-1 ring-indigo-500/5 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div class="flex items-start gap-4">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-lg shadow-indigo-500/20">
+                    <i class="fas fa-calendar-check text-lg"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold text-indigo-900 uppercase tracking-widest mb-1.5">Extended Uptime Active</h3>
+                        <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-widest rounded-md ring-1 ring-indigo-200">Reservation Active</span>
+                    </div>
+                    <p class="text-slate-600 text-sm leading-relaxed">
+                        An extended uptime reservation is currently active: <strong id="override-description" class="text-indigo-900"></strong>. 
+                        The cluster will remain <strong class="text-indigo-900">ONLINE</strong> and bypass standard 8 AM/8 PM scheduled tasks until the window concludes.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Lab Hours Notice -->
+            <div class="rounded-3xl border border-blue-200/60 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 p-5 shadow-sm ring-1 ring-blue-500/5">
+                <div class="flex items-start gap-4">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20">
+                        <i class="fas fa-clock text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-xs font-bold text-blue-900 uppercase tracking-widest mb-1.5">Standard Lab Hours</h3>
+                        <p class="text-slate-600 text-sm leading-relaxed">
+                            Cluster hours are <strong class="text-blue-900">8 AM – 8 PM Eastern, Mon–Fri</strong>. The environment automatically starts at 8 AM and shuts down at 8 PM.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Booking Call to Action -->
+            <a href="{{ url_for('admin') }}" class="group rounded-3xl border border-indigo-200/60 bg-gradient-to-r from-indigo-600 to-blue-700 p-5 shadow-lg shadow-indigo-200/20 ring-1 ring-indigo-500/5 transition-all hover:shadow-indigo-300/30">
+                <div class="flex items-start gap-4 text-slate-900">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700 shadow-inner transition-colors group-hover:bg-indigo-200">
+                        <i class="fas fa-calendar-plus text-lg"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xs font-bold uppercase tracking-widest mb-1.5 text-indigo-900">Extended Uptime</h3>
+                            <i class="fas fa-arrow-right text-[10px] opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all"></i>
+                        </div>
+                        <p class="text-slate-600 text-sm leading-relaxed">
+                            Need the cluster outside of standard hours? <strong class="text-indigo-700">Book a reservation</strong> to override the automatic shutdown and keep systems online.
+                        </p>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Cluster Health Dashboard -->
+        <section class="mb-6">
+            <div class="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50/80 to-slate-100/90 shadow-lg shadow-slate-200/50">
+                <div class="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-500/5 blur-3xl"></div>
+                <div class="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-violet-500/5 blur-3xl"></div>
+                
+                <div class="relative p-6 sm:p-8">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-6">
+                        <div class="flex flex-col gap-1">
+                            <div class="flex items-center gap-3">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Infrastructure</p>
+                                <div id="status-badge-container" class="transition-all duration-300 opacity-0 translate-y-1">
+                                    <!-- Dynamic badge will be inserted here -->
+                                </div>
+                            </div>
+                            <h2 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                                Cluster infrastructure <span class="text-blue-600">health</span>
+                            </h2>
+                            <p class="text-slate-600 text-sm mt-2 max-w-2xl">
+                                Real-time status of all critical environment components. 
+                                <span id="last-updated-tag" class="font-mono text-[10px] text-slate-400 ml-1 uppercase tracking-widest">Last sync: Never</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                        <!-- Status Chips -->
+                        <div id="dash-hosts" class="group rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-sm ring-1 ring-slate-500/5 transition-all hover:shadow-md">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Physical Hosts</span>
+                            <div class="flex items-center space-x-2 status-content">
+                                <div class="w-2 h-2 rounded-full bg-slate-300 animate-pulse"></div>
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-tighter">Checking...</span>
+                            </div>
+                        </div>
+                        <div id="dash-pe" class="group rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-sm ring-1 ring-slate-500/5 transition-all hover:shadow-md">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Prism Element</span>
+                            <div class="flex items-center space-x-2 status-content">
+                                <div class="w-2 h-2 rounded-full bg-slate-300 animate-pulse"></div>
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-tighter">Checking...</span>
+                            </div>
+                        </div>
+                        <div id="dash-pc" class="group rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-sm ring-1 ring-slate-500/5 transition-all hover:shadow-md">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Prism Central</span>
+                            <div class="flex items-center space-x-2 status-content">
+                                <div class="w-2 h-2 rounded-full bg-slate-300 animate-pulse"></div>
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-tighter">Checking...</span>
+                            </div>
+                        </div>
+                        <div id="dash-fs" class="group rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-sm ring-1 ring-slate-500/5 transition-all hover:shadow-md">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">File Services</span>
+                            <div class="flex items-center space-x-2 status-content">
+                                <div class="w-2 h-2 rounded-full bg-slate-300 animate-pulse"></div>
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-tighter">Checking...</span>
+                            </div>
+                        </div>
+                        <div id="dash-nkp" class="group rounded-2xl border border-slate-200/60 bg-white/80 p-4 shadow-sm ring-1 ring-slate-500/5 transition-all hover:shadow-md">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">NKP Cluster</span>
+                            <div class="flex items-center space-x-2 status-content">
+                                <div class="w-2 h-2 rounded-full bg-slate-300 animate-pulse"></div>
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-tighter">Checking...</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Secondary Row -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+                        <div id="dash-cvms" class="flex items-center justify-between px-4 py-3 rounded-xl bg-white/50 border border-slate-200/50 shadow-sm transition-all">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">CVMs</span>
+                            <div class="status-content">
+                                 <div class="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                            </div>
+                        </div>
+                        <div id="dash-pcvms" class="flex items-center justify-between px-4 py-3 rounded-xl bg-white/50 border border-slate-200/50 shadow-sm transition-all">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">PCVMs</span>
+                            <div class="status-content">
+                                 <div class="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                            </div>
+                        </div>
+                        <div id="dash-fsvms" class="flex items-center justify-between px-4 py-3 rounded-xl bg-white/50 border border-slate-200/50 shadow-sm transition-all">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">FSVMs</span>
+                            <div class="status-content">
+                                 <div class="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                            </div>
+                        </div>
+                        <div id="dash-mgmt" class="flex items-center justify-between px-4 py-3 rounded-xl bg-white/50 border border-slate-200/50 shadow-sm transition-all">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Mgmt VMs</span>
+                            <div class="status-content">
+                                 <div class="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Full environment automation -->
+        <section class="mb-6" aria-labelledby="automation-heading">
+            <div class="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50/80 to-slate-100/90 shadow-lg shadow-slate-200/50">
+                <div class="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl"></div>
+                <div class="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-violet-500/10 blur-3xl"></div>
+                <div class="relative p-6 sm:p-8">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-6">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-1">Orchestration</p>
+                            <h2 id="automation-heading" class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                                Full environment <span class="text-blue-600">automation</span>
+                            </h2>
+                            <p class="text-slate-600 text-sm mt-2 max-w-2xl">
+                                Runs the complete sequences from <button type="button" onclick="toggleHelp()" class="text-blue-600 font-semibold hover:underline">Help → Startup / Shutdown</button>
+                                with safe delays between steps. Progress streams to <span class="font-mono text-xs">Live Logs</span> below.
+                            </p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-wider">
+                            <span class="inline-flex items-center rounded-full bg-emerald-50 text-emerald-800 px-3 py-1 ring-1 ring-emerald-200/80">
+                                <i class="fas fa-clock mr-1.5 opacity-80"></i> Startup often 60–120+ min
+                            </span>
+                            <span class="inline-flex items-center rounded-full bg-rose-50 text-rose-800 px-3 py-1 ring-1 ring-rose-200/80">
+                                <i class="fas fa-exclamation-circle mr-1.5 opacity-80"></i> Shutdown is destructive
+                            </span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+                        <div class="group rounded-2xl border border-emerald-200/80 bg-white/90 p-5 shadow-sm ring-1 ring-emerald-500/5 transition-all hover:shadow-md hover:ring-emerald-500/15">
+                            <div class="flex items-start gap-4">
+                                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white shadow-lg shadow-emerald-500/25">
+                                    <i class="fas fa-bolt text-lg"></i>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="font-bold text-slate-900 text-sm">Full automated startup</h3>
+                                    <p class="text-slate-500 text-xs mt-1 leading-relaxed">
+                                        Hosts → PE → PCVMs → PC cluster → FS → Mgmt → NKP. Default pauses align with in-app guidance (~39 min sleeps plus script runtime).
+                                    </p>
+                                    <button type="button" id="btn-automated-startup"
+                                        onclick="document.getElementById('dialog-automated-startup').showModal()"
+                                        class="mt-4 w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-emerald-600/25 transition hover:from-emerald-500 hover:to-teal-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
+                                        <i class="fas fa-play mr-2 text-xs opacity-90"></i> Start full sequence
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="group rounded-2xl border border-rose-200/80 bg-white/90 p-5 shadow-sm ring-1 ring-rose-500/5 transition-all hover:shadow-md hover:ring-rose-500/15">
+                            <div class="flex items-start gap-4">
+                                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-amber-600 text-white shadow-lg shadow-rose-500/25">
+                                    <i class="fas fa-power-off text-lg"></i>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="font-bold text-slate-900 text-sm">Full automated shutdown</h3>
+                                    <p class="text-slate-500 text-xs mt-1 leading-relaxed">
+                                        NKP → FS services → user VMs → Prism layers → AHV → host power-off. Typical built-in waits ~23 minutes plus script time.
+                                    </p>
+                                    <button type="button" id="btn-automated-shutdown"
+                                        onclick="document.getElementById('dialog-automated-shutdown').showModal()"
+                                        class="mt-4 w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-rose-600/25 transition hover:from-rose-500 hover:to-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2">
+                                        <i class="fas fa-stop-circle mr-2 text-xs opacity-90"></i> Run full shutdown
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Granular Component Functions -->
+        <section class="mb-6" aria-labelledby="granular-heading">
+            <div class="relative overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50/80 to-slate-100/90 shadow-lg shadow-slate-200/50">
+                <div class="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl"></div>
+                <div class="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-violet-500/10 blur-3xl"></div>
+                <div class="relative p-6 sm:p-8">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-8">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-1">Component Operations</p>
+                            <h2 id="granular-heading" class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                                Granular component <span class="text-blue-600">functions</span>
+                            </h2>
+                            <p class="text-slate-600 text-sm mt-2 max-w-2xl">
+                                Individual control for cluster subsystems. Use these for targeted maintenance or manual recovery steps.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Tab Bar -->
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-8 border-b border-slate-200 pb-4">
+                        <button class="granular-tab px-4 py-2 rounded-lg text-sm font-bold transition-all bg-blue-600 text-white shadow-md shadow-blue-600/25" onclick="showTab('nkp', this)">NKP Cluster</button>
+                        <button class="granular-tab px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-600 hover:bg-slate-100" onclick="showTab('pc', this)">Prism Central</button>
+                        <button class="granular-tab px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-600 hover:bg-slate-100" onclick="showTab('pe', this)">Prism Element</button>
+                        <button class="granular-tab px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-600 hover:bg-slate-100" onclick="showTab('fs', this)">File Services</button>
+                        <button class="granular-tab px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-600 hover:bg-slate-100" onclick="showTab('vms', this)">VM Ops</button>
+                        <button class="granular-tab px-4 py-2 rounded-lg text-sm font-bold transition-all text-slate-600 hover:bg-slate-100" onclick="showTab('hosts', this)">Host Ops</button>
+                    </div>
+
+                    <!-- NKP Cluster Management -->
+                    <div id="tab-nkp" class="granular-content">
+                        <h3 class="text-xs font-bold text-slate-400 mb-4 uppercase tracking-wider">NKP Cluster Management</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                            <!-- NKP Startup Card -->
+                            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-all flex flex-col h-full relative">
+                                <div id="nkp-status" class="absolute top-4 right-4 flex items-center space-x-2">
+                                    <div class="w-3 h-3 rounded-full bg-slate-300 animate-pulse"></div>
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Checking...</span>
+                                </div>
+                                <div class="flex items-center mb-4">
+                                    <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                        <i class="fas fa-cubes text-blue-600"></i>
+                                    </div>
+                                    <h3 class="font-bold text-slate-900 text-sm">NKP Startup</h3>
+                                </div>
+                                <p class="text-slate-500 text-xs mb-4">Power on NKP nodes</p>
+                                <button onclick="runScript('startup', this)" 
+                                    class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                    <i class="fas fa-power-off mr-2"></i> Start NKP
+                                </button>
+                            </div>
+
+                            <!-- NKP Shutdown Card -->
+                            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all flex flex-col h-full">
+                                <div class="flex items-center mb-4">
+                                    <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                        <i class="fas fa-cubes text-blue-600"></i>
+                                    </div>
+                                    <h3 class="font-bold text-slate-900 text-sm">NKP Shutdown</h3>
+                                </div>
+                                <p class="text-slate-500 text-xs mb-4">Drain Pods and Shutdown NKP</p>
+                                <button onclick="runScript('shutdown', this)" 
+                                    class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                    <i class="fas fa-power-off mr-2"></i> Shutdown NKP
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                <!-- Prism Central Section -->
+                    <div id="tab-pc" class="granular-content hidden">
+                        <h3 class="text-xs font-bold text-slate-400 mb-4 uppercase tracking-wider">Prism Central Cluster Services</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                        <!-- Power On PCVM Card -->
+                            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-all flex flex-col h-full relative">
+                            <div id="pcvms-status" class="absolute top-4 right-4 flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-slate-300 animate-pulse"></div>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Checking...</span>
+                            </div>
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-cloud text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Power On PCVMs</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Power On PCVMs</p>
+                            <button onclick="runScript('start_pcvm', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                Power On
+                            </button>
+                        </div>
+
+                        <!-- Power Off PCVM Card -->
+                            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-all flex flex-col h-full">
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-cloud text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Shutdown PCVMs</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Power Off PCVMs</p>
+                            <button onclick="runScript('shutdown_pcvm', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                Shutdown PCVMs
+                            </button>
+                        </div>
+
+                        <!-- Start PC Cluster Card -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all flex flex-col h-full relative">
+                            <div id="pc-status" class="absolute top-4 right-4 flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-slate-300 animate-pulse"></div>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Checking...</span>
+                            </div>
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-cogs text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Start PC Cluster</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Start Cluster</p>
+                            <button onclick="runScript('start_pc_cluster', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                Start Services
+                            </button>
+                        </div>
+
+                        <!-- Stop PC Cluster Card -->
+                            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-all flex flex-col h-full">
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-cogs text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Stop PC Cluster</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Stop Cluster</p>
+                            <button onclick="runScript('stop_pc_cluster', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                Stop Services
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PE Cluster Section -->
+                    <div id="tab-pe" class="granular-content hidden">
+                        <h3 class="text-xs font-bold text-slate-400 mb-4 uppercase tracking-wider">Prism Element Cluster Services</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                        <!-- Power On CVM Card -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all flex flex-col h-full relative">
+                            <div id="cvms-status" class="absolute top-4 right-4 flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-slate-300 animate-pulse"></div>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Checking...</span>
+                            </div>
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-microchip text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Power On CVMs</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Power On CVMs</p>
+                            <button onclick="runScript('start_cvm', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                Power On
+                            </button>
+                        </div>
+
+                        <!-- Power Off CVM Card -->
+                            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-all flex flex-col h-full">
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-microchip text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Shutdown CVMs</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Power Off CVMs</p>
+                            <button onclick="runScript('shutdown_cvm', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                Shutdown CVMs
+                            </button>
+                        </div>
+
+                        <!-- Start PE Cluster Card -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all flex flex-col h-full relative">
+                            <div id="pe-status" class="absolute top-4 right-4 flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-slate-300 animate-pulse"></div>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Checking...</span>
+                            </div>
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-cube text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Start PE Cluster</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Start Cluster</p>
+                            <button onclick="runScript('start_pe_cluster', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                Start Services
+                            </button>
+                        </div>
+
+                        <!-- Stop PE Cluster Card -->
+                            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-all flex flex-col h-full">
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-cube text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Stop PE Cluster</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Stop Cluster</p>
+                            <button onclick="runScript('stop_pe_cluster', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                Stop Services
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Services Section -->
+                    <div id="tab-fs" class="granular-content hidden">
+                        <h3 class="text-xs font-bold text-slate-400 mb-4 uppercase tracking-wider">File Services</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                        <!-- Power On FSVM Card -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all flex flex-col h-full relative">
+                            <div id="fsvms-status" class="absolute top-4 right-4 flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-slate-300 animate-pulse"></div>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Checking...</span>
+                            </div>
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-file-alt text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Power On FSVM</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Power On FSVMs</p>
+                            <button onclick="runScript('start_fsnkp', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                Power On
+                            </button>
+                        </div>
+
+                        <!-- Power Off FSVM Card -->
+                            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-all flex flex-col h-full">
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-file-alt text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Shutdown FSVMs</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Power Off FSVMs</p>
+                            <button onclick="runScript('stop_fsnkp', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                Shutdown FSVMs
+                            </button>
+                        </div>
+
+                        <!-- Start FS Cluster Card -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all flex flex-col h-full relative">
+                            <div id="fs-status" class="absolute top-4 right-4 flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-slate-300 animate-pulse"></div>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Checking...</span>
+                            </div>
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-network-wired text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Start FS Cluster</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Start Cluster</p>
+                            <button onclick="runScript('start_fs_cluster', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                Start Services
+                            </button>
+                        </div>
+
+                        <!-- Stop FS Cluster Card -->
+                            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hover:shadow-md transition-all flex flex-col h-full">
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-network-wired text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Stop FS Cluster</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Stop Cluster</p>
+                            <button onclick="runScript('stop_fs_cluster', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                Stop Services
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Environment Operations Section -->
+                    <div id="tab-vms" class="granular-content hidden">
+                        <h3 class="text-xs font-bold text-slate-400 mb-4 uppercase tracking-wider">VM Operations</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                        <!-- Global Shutdown Card -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all flex flex-col h-full">
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-users text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Shutdown User VMs</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Power off all user VMs.</p>
+                            <button onclick="runScript('shutdown_all', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                <i class="fas fa-power-off mr-2"></i> Shutdown User VMs
+                            </button>
+                        </div>
+
+                        <!-- Power On Mgmt VMs Card -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all flex flex-col h-full relative">
+                            <div id="mgmt-status" class="absolute top-4 right-4 flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-slate-300 animate-pulse"></div>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Checking...</span>
+                            </div>
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-tools text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Power On Mgmt VMs</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Power On System VMs (DNS, LDAP, etc.)</p>
+                            <button onclick="runScript('startup_mgmt_vms', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                <i class="fas fa-power-off mr-2"></i> Power On
+                            </button>
+                        </div>
+
+                        <!-- Power Off Mgmt VMs Card -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all flex flex-col h-full">
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-tools text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Shutdown Mgmt VMs</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Power Off System VMs (DNS, LDAP, etc.)</p>
+                            <button onclick="runScript('shutdown_mgmt_vms', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                <i class="fas fa-power-off mr-2"></i> Shutdown Mgmt VMs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Host Operations Section -->
+                    <div id="tab-hosts" class="granular-content hidden">
+                        <h3 class="text-xs font-bold text-slate-400 mb-4 uppercase tracking-wider">Host Operations</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Shutdown AHV Card -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all flex flex-col h-full">
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-terminal text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Shutdown AHV</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Power Off Hosts</p>
+                            <button onclick="runScript('shutdown_ahv', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                <i class="fas fa-power-off mr-2"></i> Shutdown AHV
+                            </button>
+                        </div>
+
+                        <!-- Power Off Hosts Card -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all flex flex-col h-full">
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-server text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Power Off Hosts</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Power Off Hosts via CIMC Redfish</p>
+                            <button onclick="runScript('shutdown_hosts_redfish', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                <i class="fas fa-power-off mr-2"></i> Power Off
+                            </button>
+                        </div>
+
+                        <!-- Power On Hosts Card -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-all flex flex-col h-full relative">
+                            <div id="hosts-status" class="absolute top-4 right-4 flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-slate-300 animate-pulse"></div>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Checking...</span>
+                            </div>
+                            <div class="flex items-center mb-4">
+                                <div class="bg-blue-100 p-3 rounded-lg mr-3">
+                                    <i class="fas fa-server text-blue-600"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-900 text-sm">Power On Hosts</h3>
+                            </div>
+                            <p class="text-slate-500 text-xs mb-4">Power On Hosts via CIMC Redfish</p>
+                            <button onclick="runScript('startup_hosts', this)" 
+                                class="mt-auto w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center text-sm">
+                                <i class="fas fa-power-off mr-2"></i> Power On
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+        <!-- Terminal Output -->
+        <div class="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between px-6 py-3 bg-slate-50/70 border-b border-slate-200">
+                <div class="flex space-x-2">
+                    <div class="w-3 h-3 rounded-full bg-rose-300"></div>
+                    <div class="w-3 h-3 rounded-full bg-amber-300"></div>
+                    <div class="w-3 h-3 rounded-full bg-emerald-300"></div>
+                </div>
+                <span class="text-slate-500 text-xs font-mono uppercase tracking-widest">Live Logs</span>
+                <button onclick="clearLogs()" class="text-slate-400 hover:text-slate-700 transition-colors">
+                    <i class="fas fa-trash-alt text-xs"></i>
+                </button>
+            </div>
+            <pre id="output" class="p-6 h-96 overflow-y-auto overflow-x-auto font-mono text-sm text-slate-600 leading-relaxed bg-white whitespace-pre-wrap"></pre>
+        </div>
+    </main>
+
+    <!-- Full automation confirmations (native dialog) -->
+    <dialog id="dialog-automated-startup" class="max-w-md w-[calc(100%-2rem)] rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl">
+        <form method="dialog" class="flex flex-col">
+            <div class="border-b border-slate-100 px-6 py-4 flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900">Start full sequence?</h3>
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Automated startup</p>
+                </div>
+            </div>
+            <div class="px-6 py-4 text-sm text-slate-600 leading-relaxed space-y-3">
+                <p>This runs all ten steps from <strong class="text-slate-800">Help → Startup Sequence</strong> with built-in wait periods. Total time is often <strong class="text-slate-800">well over an hour</strong> depending on cluster behavior.</p>
+                <p class="text-xs text-slate-500">Output appears in <span class="font-mono text-emerald-700">Live Logs</span>. You can leave this page open until the run finishes.</p>
+            </div>
+            <div class="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 bg-slate-50/80 rounded-b-2xl">
+                <button type="submit" value="cancel" class="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200/80 transition-colors">Cancel</button>
+                <button type="button" id="dialog-automated-startup-go"
+                    class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-emerald-500 transition-colors">
+                    Begin startup
+                </button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="dialog-automated-shutdown" class="max-w-md w-[calc(100%-2rem)] rounded-2xl border border-rose-200 bg-white p-0 text-slate-900 shadow-2xl">
+        <form method="dialog" class="flex flex-col">
+            <div class="border-b border-rose-100 bg-rose-50/50 px-6 py-4 flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900">Shut down entire environment?</h3>
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-rose-600/80">Automated shutdown</p>
+                </div>
+            </div>
+            <div class="px-6 py-4 text-sm text-slate-600 leading-relaxed space-y-3">
+                <p>This runs the <strong class="text-rose-800">full shutdown sequence</strong> from Help (including the NDK webhook safeguard, then NKP through host power-off). Workloads will be stopped and hosts powered off via Redfish.</p>
+                <p class="text-xs text-slate-500">Ensure no one relies on this cluster before continuing. Recovery requires physical or out-of-band access if something fails mid-sequence.</p>
+            </div>
+            <div class="flex justify-end gap-2 border-t border-slate-100 px-6 py-4 bg-slate-50/80 rounded-b-2xl">
+                <button type="submit" value="cancel" class="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-200/80 transition-colors">Cancel</button>
+                <button type="button" id="dialog-automated-shutdown-go"
+                    class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-rose-500 transition-colors">
+                    Yes, run full shutdown
+                </button>
+            </div>
+        </form>
+    </dialog>
+
+    <script>
+        function showTab(tabId, btn) {
+            // Hide all content
+            document.querySelectorAll('.granular-content').forEach(el => el.classList.add('hidden'));
+            // Show selected content
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            
+            // Update button styles
+            document.querySelectorAll('.granular-tab').forEach(el => {
+                el.classList.remove('bg-blue-600', 'text-white', 'shadow-md', 'shadow-blue-600/25');
+                el.classList.add('text-slate-600', 'hover:bg-slate-100');
+            });
+            btn.classList.add('bg-blue-600', 'text-white', 'shadow-md', 'shadow-blue-600/25');
+            btn.classList.remove('text-slate-600', 'hover:bg-slate-100');
+        }
+
+        async function parseJsonOrThrow(response) {
+            const contentType = response.headers.get('content-type') || '';
+            const bodyText = await response.text();
+
+            if (!response.ok) {
+                throw new Error(bodyText || `HTTP ${response.status}`);
+            }
+
+            if (!contentType.toLowerCase().includes('application/json')) {
+                const preview = (bodyText || '').trim().slice(0, 120);
+                throw new Error(`Expected JSON but got non-JSON response (HTTP ${response.status}). ${preview}`);
+            }
+
+            try {
+                return JSON.parse(bodyText);
+            } catch (err) {
+                throw new Error(`Invalid JSON response (HTTP ${response.status})`);
+            }
+        }
+
+        function buildPrefixedUrlIfNeeded(url) {
+            if (!url || !url.startsWith('/')) return null;
+            const parts = window.location.pathname.split('/').filter(Boolean);
+            if (parts.length === 0) return null;
+            
+            const prefix = `/${parts[0]}`;
+            if (url.startsWith(prefix)) return null; // Already prefixed
+            
+            const prefixed = `${prefix}${url}`;
+            return prefixed;
+        }
+
+        let lastStatusUpdated = null;
+        let globalIsOverrideActive = false;
+
+        function applyStatusPayload(payload) {
+            if (!payload) return;
+            const status = payload.status || payload;
+            const meta = payload.meta || null;
+            if (meta && meta.last_updated) {
+                lastStatusUpdated = meta.last_updated;
+            }
+            const isOverrideActive = !!payload.scheduled_pause_active;
+            globalIsOverrideActive = isOverrideActive;
+            processStatusData(status, meta, isOverrideActive);
+
+            // Handle scheduled pause notice
+            const notice = document.getElementById('automation-override-notice');
+            const desc = document.getElementById('override-description');
+            if (notice && payload.scheduled_pause_active) {
+                desc.textContent = payload.scheduled_pause_active.description || "Active Override";
+                notice.classList.remove('hidden');
+            } else if (notice) {
+                notice.classList.add('hidden');
+            }
+        }
+
+        function runScript(endpoint, btn) {
+            const output = document.getElementById('output');
+            const terminal = output.parentElement;
+            
+            output.textContent = "🚀 Initiating background task...\n\n";
+            terminal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Queueing...';
+            btn.classList.add('btn-loading');
+
+            const routeMap = {
+                'automated_full_startup': "{{ url_for('automated_full_startup') }}",
+                'automated_full_shutdown': "{{ url_for('automated_full_shutdown') }}",
+                'startup': "{{ url_for('startup') }}",
+                'shutdown': "{{ url_for('shutdown') }}",
+                'start_pcvm': "{{ url_for('start_pcvm') }}",
+                'shutdown_pcvm': "{{ url_for('shutdown_pcvm') }}",
+                'start_pc_cluster': "{{ url_for('start_pc_cluster') }}",
+                'stop_pc_cluster': "{{ url_for('stop_pc_cluster') }}",
+                'start_cvm': "{{ url_for('start_cvm') }}",
+                'shutdown_cvm': "{{ url_for('shutdown_cvm') }}",
+                'start_pe_cluster': "{{ url_for('start_pe_cluster') }}",
+                'stop_pe_cluster': "{{ url_for('stop_pe_cluster') }}",
+                'start_fsnkp': "{{ url_for('start_fsnkp') }}",
+                'stop_fsnkp': "{{ url_for('stop_fsnkp') }}",
+                'start_fs_cluster': "{{ url_for('start_fs_cluster') }}",
+                'stop_fs_cluster': "{{ url_for('stop_fs_cluster') }}",
+                'startup_mgmt_vms': "{{ url_for('startup_mgmt_vms') }}",
+                'shutdown_mgmt_vms': "{{ url_for('shutdown_mgmt_vms') }}",
+                'shutdown_ahv': "{{ url_for('shutdown_ahv') }}",
+                'startup_hosts': "{{ url_for('startup_hosts') }}",
+                'shutdown_hosts_redfish': "{{ url_for('shutdown_hosts_redfish') }}",
+                'shutdown_all': "{{ url_for('shutdown_all') }}"
+            };
+            const url = routeMap[endpoint] || endpoint;
+
+            const requestOptions = {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            };
+
+            const startJob = (targetUrl) => fetch(targetUrl, requestOptions)
+                .then(async response => {
+                    if (response.status === 401) {
+                        console.warn("Session expired. Redirecting to login...");
+                        window.location.href = "{{ url_for('login') }}";
+                        throw new Error("Session expired");
+                    }
+                    return parseJsonOrThrow(response);
+                })
+                .then(data => {
+                    if (data && data.job_id) {
+                        pollJobStatus(data.job_id, btn, originalHtml);
+                        // Trigger immediate UI update to show status badge
+                        updateClusterStatus();
+                    } else if (data && data.error) {
+                        throw new Error(data.error);
+                    } else {
+                        throw new Error("Invalid response from server");
+                    }
+                });
+
+            startJob(url)
+                .catch(err => {
+                    const shouldRetryPrefixed = err.message && err.message.includes("Expected JSON but got non-JSON response");
+                    const prefixedUrl = buildPrefixedUrlIfNeeded(url);
+                    if (!shouldRetryPrefixed || !prefixedUrl) {
+                        throw err;
+                    }
+                    console.warn("Retrying with app prefix path:", prefixedUrl);
+                    return startJob(prefixedUrl);
+                })
+                .catch(err => {
+                    if (err.message === "Session expired") return;
+                    console.error('Task initiation failed:', err);
+                    output.textContent += "\n❌ Error: " + err.message;
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    btn.classList.remove('btn-loading');
+                });
+        }
+
+        function pollJobStatus(jobId, btn, originalHtml) {
+            const output = document.getElementById('output');
+            const interval = setInterval(() => {
+                // Use url_for template but replace placeholder with actual jobId
+                const url = "{{ url_for('job_status', job_id='JOB_ID_PLACEHOLDER') }}".replace('JOB_ID_PLACEHOLDER', jobId);
+                const requestOptions = {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                };
+                fetch(url, requestOptions)
+                    .then(async response => {
+                        if (response.status === 401) {
+                            clearInterval(interval);
+                            window.location.href = "{{ url_for('login') }}";
+                            throw new Error("Session expired");
+                        }
+                        return parseJsonOrThrow(response);
+                    })
+                    .catch(err => {
+                        const shouldRetryPrefixed = err.message && err.message.includes("Expected JSON but got non-JSON response");
+                        const prefixedUrl = buildPrefixedUrlIfNeeded(url);
+                        if (!shouldRetryPrefixed || !prefixedUrl) throw err;
+                        return fetch(prefixedUrl, requestOptions).then(async response => {
+                            if (response.status === 401) {
+                                clearInterval(interval);
+                                window.location.href = "{{ url_for('login') }}";
+                                throw new Error("Session expired");
+                            }
+                            return parseJsonOrThrow(response);
+                        });
+                    })
+                    .then(data => {
+                        if (data) {
+                            output.textContent = data.output;
+                            output.scrollTop = output.scrollHeight;
+
+                            if (data.status === 'completed' || data.status === 'failed') {
+                                clearInterval(interval);
+                                if (btn) {
+                                    btn.disabled = false;
+                                    btn.innerHTML = originalHtml;
+                                    btn.classList.remove('btn-loading');
+                                } else {
+                                    // If no button (external job), just refresh the status
+                                    updateClusterStatus();
+                                }
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        if (err.message === "Session expired") return;
+                        clearInterval(interval);
+                        output.textContent += "\n❌ Polling Error: " + err.message;
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = originalHtml;
+                            btn.classList.remove('btn-loading');
+                        }
+                    });
+            }, 2000);
+        }
+
+        function resumeActiveJobs() {
+            console.log("Checking for active jobs to resume...");
+            const url = "{{ url_for('active_jobs') }}";
+            const requestOptions = {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            };
+
+            const fetchActive = (targetUrl) => fetch(targetUrl, requestOptions)
+                .then(async response => {
+                    if (response.status === 401) return null;
+                    return parseJsonOrThrow(response);
+                })
+                .then(data => {
+                    if (data && data.active_jobs && data.active_jobs.length > 0) {
+                        const latestJob = data.active_jobs[0];
+                        console.log("Resuming job:", latestJob);
+                        const btn = findButtonByEndpoint(latestJob.script_name);
+                        
+                        const output = document.getElementById('output');
+                        output.textContent = "🔄 Resuming live log stream...\n\n";
+                        
+                        let originalHtml = "";
+                        if (btn) {
+                            originalHtml = btn.innerHTML;
+                            btn.disabled = true;
+                            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Running...';
+                            btn.classList.add('btn-loading');
+                        }
+                        
+                        pollJobStatus(latestJob.id, btn, originalHtml);
+                    }
+                });
+
+            fetchActive(url).catch(err => {
+                const prefixedUrl = buildPrefixedUrlIfNeeded(url);
+                if (prefixedUrl) return fetchActive(prefixedUrl);
+                throw err;
+            }).catch(err => console.error("Error resuming active jobs:", err));
+        }
+
+        function findButtonByEndpoint(endpoint) {
+            // Check for special automation buttons by ID first
+            if (endpoint === 'automated_full_startup') return document.getElementById('btn-automated-startup');
+            if (endpoint === 'automated_full_shutdown') return document.getElementById('btn-automated-shutdown');
+
+            const buttons = document.querySelectorAll('button[onclick]');
+            for (const btn of buttons) {
+                const onclick = btn.getAttribute('onclick');
+                if (onclick && onclick.includes(`'${endpoint}'`)) {
+                    return btn;
+                }
+            }
+            return null;
+        }
+
+        function clearLogs() {
+            document.getElementById('output').textContent = "";
+        }
+
+        function forceRefreshStatus(btn) {
+            const refreshUrl = "{{ url_for('cluster_status_refresh_api') }}";
+            const statusUrl = "{{ url_for('cluster_status_api') }}";
+            const previousUpdated = lastStatusUpdated;
+            const requestOptions = {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            };
+            const getRequestOptions = {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            };
+
+            btn.classList.add('btn-loading');
+            btn.disabled = true;
+
+            const fetchWithPrefixRetry = (url, options) => {
+                return fetch(url, options)
+                    .then(async response => {
+                        if (response.status === 401) {
+                            window.location.href = "{{ url_for('login') }}";
+                            throw new Error("Session expired");
+                        }
+                        return parseJsonOrThrow(response);
+                    })
+                    .catch(err => {
+                        const shouldRetryPrefixed = err.message && err.message.includes("Expected JSON but got non-JSON response");
+                        const prefixedUrl = buildPrefixedUrlIfNeeded(url);
+                        if (!shouldRetryPrefixed || !prefixedUrl) throw err;
+                        return fetch(prefixedUrl, options).then(async response => {
+                            if (response.status === 401) {
+                                window.location.href = "{{ url_for('login') }}";
+                                throw new Error("Session expired");
+                            }
+                            return parseJsonOrThrow(response);
+                        });
+                    });
+            };
+
+            fetchWithPrefixRetry(refreshUrl, requestOptions)
+                .then(() => {
+                    const startedAt = Date.now();
+                    const timeoutMs = 60000;
+                    const pollMs = 2000;
+
+                    const poll = () => {
+                        return fetchWithPrefixRetry(statusUrl, getRequestOptions).then(payload => {
+                            applyStatusPayload(payload);
+                            const meta = payload && payload.meta ? payload.meta : null;
+                            const hasFreshData = previousUpdated == null || (meta && meta.last_updated && meta.last_updated > previousUpdated);
+                            const done = meta && !meta.update_in_progress && hasFreshData;
+
+                            if (done) return;
+                            if (Date.now() - startedAt > timeoutMs) {
+                                throw new Error("Timed out waiting for status refresh");
+                            }
+                            return new Promise(resolve => setTimeout(resolve, pollMs)).then(poll);
+                        });
+                    };
+                    return poll();
+                })
+                .catch(err => {
+                    if (err.message === "Session expired") return;
+                    console.error("Manual refresh failed:", err);
+                })
+                .finally(() => {
+                    btn.classList.remove('btn-loading');
+                    btn.disabled = false;
+                });
+        }
+
+        function processStatusData(data, meta, isOverrideActive) {
+            if (!data) return;
+            console.log("Status received:", data);
+            
+            if (meta && meta.last_updated) {
+                const date = new Date(meta.last_updated * 1000);
+                document.getElementById('last-updated-tag').textContent = `Last sync: ${date.toLocaleTimeString()}`;
+            }
+            
+            const updateUI = (id, status, labelUp, labelDown) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                
+                // 1. Update card-level status (the small absolute circles)
+                if (status === 'up') {
+                    el.innerHTML = `<div class="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>`;
+                } else if (status === 'down') {
+                    el.innerHTML = `<div class="w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]"></div>`;
+                } else {
+                    el.innerHTML = `<div class="w-3 h-3 rounded-full bg-slate-300 animate-pulse"></div>`;
+                }
+
+                // 2. Update dashboard-level status chips
+                const dashId = `dash-${id.replace('-status', '')}`;
+                const dashEl = document.getElementById(dashId);
+                if (dashEl) {
+                    const content = dashEl.querySelector('.status-content');
+                    if (content) {
+                        if (status === 'up') {
+                            dashEl.classList.remove('bg-slate-50/50', 'bg-rose-50/30', 'border-slate-100', 'border-rose-100');
+                            dashEl.classList.add('bg-emerald-50/30', 'border-emerald-100');
+                            content.innerHTML = `<div class="w-2 h-2 rounded-full bg-emerald-500"></div><span class="text-xs font-bold text-emerald-600 uppercase tracking-tighter">${labelUp}</span>`;
+                        } else if (status === 'down') {
+                            dashEl.classList.remove('bg-slate-50/50', 'bg-emerald-50/30', 'border-slate-100', 'border-emerald-100');
+                            dashEl.classList.add('bg-rose-50/30', 'border-rose-100');
+                            content.innerHTML = `<div class="w-2 h-2 rounded-full bg-rose-500"></div><span class="text-xs font-bold text-rose-600 uppercase tracking-tighter">${labelDown}</span>`;
+                        } else {
+                            dashEl.classList.remove('bg-emerald-50/30', 'bg-rose-50/30', 'border-emerald-100', 'border-rose-100');
+                            dashEl.classList.add('bg-slate-50/50', 'border-slate-100');
+                            content.innerHTML = `<div class="w-2 h-2 rounded-full bg-slate-300 animate-pulse"></div><span class="text-xs font-bold text-slate-400 uppercase tracking-tighter">Checking...</span>`;
+                        }
+                    }
+                }
+            };
+
+            updateUI('pc-status', data.pc, 'Cluster UP', 'Cluster DOWN');
+            updateUI('pe-status', data.pe, 'Cluster UP', 'Cluster DOWN');
+            updateUI('fs-status', data.fs, 'Cluster UP', 'Cluster DOWN');
+            updateUI('mgmt-status', data.mgmt, 'Powered ON', 'Powered OFF');
+            updateUI('nkp-status', data.nkp, 'NKP UP', 'NKP DOWN');
+            updateUI('pcvms-status', data.pcvms, 'Powered ON', 'Powered OFF');
+            updateUI('cvms-status', data.cvms, 'Powered ON', 'Powered OFF');
+            updateUI('fsvms-status', data.fsvms, 'Powered ON', 'Powered OFF');
+            updateUI('hosts-status', data.hosts, 'Powered ON', 'Powered OFF');
+
+            // Automation button management
+            const btnStartup = document.getElementById('btn-automated-startup');
+            const btnShutdown = document.getElementById('btn-automated-shutdown');
+            
+            // Define what "all up" means
+            const allUp = data.pc === 'up' && data.pe === 'up' && data.fs === 'up' && 
+                          data.mgmt === 'up' && data.nkp === 'up' && data.pcvms === 'up' && 
+                          data.cvms === 'up' && data.fsvms === 'up' && data.hosts === 'up';
+
+            const allDown = data.pc === 'down' && data.pe === 'down' && data.fs === 'down' && 
+                            data.mgmt === 'down' && data.nkp === 'down' && data.pcvms === 'down' && 
+                            data.cvms === 'down' && data.fsvms === 'down' && data.hosts === 'down';
+
+            if (btnStartup && !btnStartup.classList.contains('btn-loading')) {
+                if (allUp) {
+                    btnStartup.disabled = true;
+                    btnStartup.title = "All systems are already online";
+                    btnStartup.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    btnStartup.disabled = false;
+                    btnStartup.title = "";
+                    btnStartup.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+
+            if (btnShutdown && !btnShutdown.classList.contains('btn-loading')) {
+                if (allDown) {
+                    btnShutdown.disabled = true;
+                    btnShutdown.title = "All systems are already offline";
+                    btnShutdown.classList.add('opacity-50', 'cursor-not-allowed');
+                } else if (isOverrideActive) {
+                    btnShutdown.disabled = true;
+                    btnShutdown.title = "Shutdown disabled during active Reservation";
+                    btnShutdown.classList.add('opacity-50', 'cursor-not-allowed');
+                    btnShutdown.innerHTML = '<i class="fas fa-lock mr-2 text-xs opacity-90"></i> System Reserved';
+                } else {
+                    btnShutdown.disabled = false;
+                    btnShutdown.title = "";
+                    btnShutdown.classList.remove('opacity-50', 'cursor-not-allowed');
+                    btnShutdown.innerHTML = '<i class="fas fa-stop-circle mr-2 text-xs opacity-90"></i> Run full shutdown';
+                }
+            }
+        }
+
+        function updateClusterStatus() {
+            console.log("Checking cluster status...");
+            const url = "{{ url_for('cluster_status_api') }}";
+            const jobsUrl = "{{ url_for('active_jobs') }}";
+            const requestOptions = {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            };
+
+            // Check Cluster Status
+            fetch(url, requestOptions)
+                .then(async response => {
+                    if (response.status === 401) {
+                        console.warn("Periodic status check: Session expired.");
+                        throw new Error("Session expired");
+                    }
+                    return parseJsonOrThrow(response);
+                })
+                .catch(err => {
+                    const prefixedUrl = buildPrefixedUrlIfNeeded(url);
+                    if (prefixedUrl) return fetch(prefixedUrl, requestOptions).then(async response => {
+                        if (response.status === 401) throw new Error("Session expired");
+                        return parseJsonOrThrow(response);
+                    });
+                    throw err;
+                })
+                .then(data => { if (data) applyStatusPayload(data); })
+                .catch(err => { if (err.message !== "Session expired") console.error('Status check failed:', err); });
+
+            // Check Active Jobs
+            fetch(jobsUrl, requestOptions)
+                .then(async response => {
+                    if (response.status === 401) return null;
+                    return parseJsonOrThrow(response);
+                })
+                .then(data => {
+                    const container = document.getElementById('status-badge-container');
+                    if (!container) return;
+                    
+                    if (data && data.active_jobs && data.active_jobs.length > 0) {
+                        const job = data.active_jobs[0];
+                        const isStartup = job.script_name && (job.script_name.includes('startup') || job.script_name.includes('start'));
+                        
+                        // If an override is active and it's an automated shutdown job, 
+                        // we likely have a stale status file or the cron job is just hitting the exit 0 check.
+                        // We suppress the badge in this case to avoid confusion.
+                        if (globalIsOverrideActive && !isStartup && job.id === 'external_shutdown') {
+                            container.classList.add('opacity-0', 'translate-y-1');
+                            container.classList.remove('opacity-100', 'translate-y-0');
+                            return;
+                        }
+
+                        const badgeHtml = isStartup 
+                            ? `<span class="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 ring-1 ring-inset ring-blue-700/10 animate-pulse">
+                                 <i class="fas fa-sync-alt fa-spin"></i> Provisioning Cluster...
+                               </span>`
+                            : `<span class="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700 ring-1 ring-inset ring-rose-700/10 animate-pulse">
+                                 <i class="fas fa-power-off"></i> Shutting Down Cluster...
+                               </span>`;
+                        
+                        container.innerHTML = badgeHtml;
+                        container.classList.remove('opacity-0', 'translate-y-1');
+                        container.classList.add('opacity-100', 'translate-y-0');
+                    } else {
+                        container.classList.add('opacity-0', 'translate-y-1');
+                        container.classList.remove('opacity-100', 'translate-y-0');
+                    }
+                });
+        }
+
+        // Initial check and set interval
+        updateClusterStatus();
+        setInterval(updateClusterStatus, 30000); // Check every 30 seconds
+
+        (function wireFullAutomationDialogs() {
+            var goStartup = document.getElementById('dialog-automated-startup-go');
+            var goShutdown = document.getElementById('dialog-automated-shutdown-go');
+            if (goStartup) {
+                goStartup.addEventListener('click', function () {
+                    document.getElementById('dialog-automated-startup').close();
+                    runScript('automated_full_startup', document.getElementById('btn-automated-startup'));
+                });
+            }
+            if (goShutdown) {
+                goShutdown.addEventListener('click', function () {
+                    document.getElementById('dialog-automated-shutdown').close();
+                    runScript('automated_full_shutdown', document.getElementById('btn-automated-shutdown'));
+                });
+            }
+        })();
+
+        function toggleConsoles() {
+            const modal = document.getElementById('console-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function toggleHelp() {
+            const modal = document.getElementById('help-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function toggleDisclaimer() {
+            const modal = document.getElementById('disclaimer-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        window.onload = function() {
+            if (!sessionStorage.getItem('disclaimerShown')) {
+                toggleDisclaimer();
+                sessionStorage.setItem('disclaimerShown', 'true');
+            }
+            // Resume active jobs on page load
+            resumeActiveJobs();
+        };
+    </script>
+
+    <!-- Console Modal -->
+    <div id="console-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 py-6 text-center sm:p-6">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-slate-900 opacity-75" onclick="toggleConsoles()"></div>
+            </div>
+            <div class="relative inline-block w-full max-w-5xl text-left align-middle">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden">
+                    <div class="px-6 py-5 border-b border-slate-100 bg-slate-50/70">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="h-10 w-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                                    <i class="fas fa-terminal text-lg"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-slate-900 tracking-tight">VNC Console Access</h3>
+                                    <p class="text-xs text-slate-500 mt-0.5">Quick-launch console sessions for CVM, PCVM, and FSVM nodes.</p>
+                                </div>
+                            </div>
+                            <button onclick="toggleConsoles()" class="h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-6 space-y-6">
+                        <!-- CVMs -->
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
+                            <h4 class="text-blue-700 text-xs font-bold uppercase tracking-widest mb-3 flex items-center">
+                                Controller VMs (CVM)
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <a href="{{ console_base_url }}/console/vnc_auto.html?path=proxy/52e4c1f0-4737-48dd-9520-e3fc44f4c734" target="_blank"
+                                   class="flex items-center justify-center px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all">
+                                   <i class="fas fa-desktop mr-2 opacity-70"></i> 10.142.151.115
+                                </a>
+                                <a href="{{ console_base_url }}/console/vnc_auto.html?path=proxy/5c49589a-4703-4fee-9f99-ee3532f856c6" target="_blank"
+                                   class="flex items-center justify-center px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all">
+                                   <i class="fas fa-desktop mr-2 opacity-70"></i> 10.142.151.116
+                                </a>
+                                <a href="{{ console_base_url }}/console/vnc_auto.html?path=proxy/5301a32f-b29b-4597-b702-cf0cf2043fd3" target="_blank"
+                                   class="flex items-center justify-center px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all">
+                                   <i class="fas fa-desktop mr-2 opacity-70"></i> 10.142.151.117
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- PCVMs -->
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
+                            <h4 class="text-blue-700 text-xs font-bold uppercase tracking-widest mb-3 flex items-center">
+                                Prism Central VMs (PCVM)
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <a href="{{ console_base_url }}/console/vnc_auto.html?path=proxy/129a1cd7-4914-4b61-ab79-cdaa51ff914f" target="_blank"
+                                   class="flex items-center justify-center px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all">
+                                   <i class="fas fa-desktop mr-2 opacity-70"></i> 10.142.151.31
+                                </a>
+                                <a href="{{ console_base_url }}/console/vnc_auto.html?path=proxy/42cbf356-9cc4-4e6b-b2b3-953210f80389" target="_blank"
+                                   class="flex items-center justify-center px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all">
+                                   <i class="fas fa-desktop mr-2 opacity-70"></i> 10.142.151.32
+                                </a>
+                                <a href="{{ console_base_url }}/console/vnc_auto.html?path=proxy/a97e950c-87ef-4cf4-96d9-7d641a99b70b" target="_blank"
+                                   class="flex items-center justify-center px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all">
+                                   <i class="fas fa-desktop mr-2 opacity-70"></i> 10.142.151.33
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- FSVMs -->
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50/40 p-4">
+                            <h4 class="text-blue-700 text-xs font-bold uppercase tracking-widest mb-3 flex items-center">
+                                File Server VMs (FSVM)
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <a href="{{ console_base_url }}/console/vnc_auto.html?path=proxy/b0b80269-c5f6-4e3e-8f8f-cad453bcbe04" target="_blank"
+                                   class="flex items-center justify-center px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all">
+                                   <i class="fas fa-desktop mr-2 opacity-70"></i> 172.30.32.101
+                                </a>
+                                <a href="{{ console_base_url }}/console/vnc_auto.html?path=proxy/93cbeacf-2feb-47b1-a30b-cad0f0d226ec" target="_blank"
+                                   class="flex items-center justify-center px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all">
+                                   <i class="fas fa-desktop mr-2 opacity-70"></i> 172.30.32.102
+                                </a>
+                                <a href="{{ console_base_url }}/console/vnc_auto.html?path=proxy/686bbf79-b3fb-4601-af96-4a57ca0fe7a8" target="_blank"
+                                   class="flex items-center justify-center px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 transition-all">
+                                   <i class="fas fa-desktop mr-2 opacity-70"></i> 172.30.32.103
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/70">
+                        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest text-center">
+                            Consoles open in a new tab
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 py-6 text-center sm:p-6">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onclick="toggleHelp()"></div>
+            </div>
+            <div class="relative inline-block w-full max-w-5xl text-left align-middle">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden">
+                    <div class="px-6 py-5 border-b border-slate-100 bg-slate-50/70">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="h-10 w-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                                    <i class="fas fa-info-circle text-lg"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-bold text-slate-900 tracking-tight">Cluster Operations Help</h3>
+                                    <p class="text-xs text-slate-500 mt-0.5">Recommended startup and shutdown sequencing.</p>
+                                </div>
+                            </div>
+                            <button onclick="toggleHelp()" class="h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-5">
+                        <!-- Startup Guide -->
+                        <div class="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-5">
+                            <h4 class="text-emerald-700 text-xs font-bold uppercase tracking-widest mb-4 flex items-center">
+                                <i class="fas fa-arrow-up mr-2"></i> Startup Sequence
+                            </h4>
+                            <ol class="space-y-3">
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold text-[10px] mr-2.5 mt-0.5">1</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Power On Hosts</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold text-[10px] mr-2.5 mt-0.5">2</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Start PE Cluster</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold text-[10px] mr-2.5 mt-0.5">3</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Power On PCVMs</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold text-[10px] mr-2.5 mt-0.5">4</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Start PC Cluster</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold text-[10px] mr-2.5 mt-0.5">5</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Power on FSVMs</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold text-[10px] mr-2.5 mt-0.5">6</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Start FS Cluster</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold text-[10px] mr-2.5 mt-0.5">7</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Power On Mgmt VMs</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold text-[10px] mr-2.5 mt-0.5">8</span>
+                                    <span class="text-slate-700 text-xs font-semibold">NKP Startup</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold text-[10px] mr-2.5 mt-0.5">9</span>
+                                    <span class="text-slate-700 text-xs font-semibold">NKP Pod Recovery</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold text-[10px] mr-2.5 mt-0.5">10</span>
+                                    <span class="text-slate-700 text-xs font-semibold">NDK Webhook Restore</span>
+                                </li>
+                                <li class="mt-4 pt-4 border-t border-emerald-200 text-[11px] italic text-amber-700 font-semibold leading-relaxed">
+                                    Note: For Step 3, you may need to wait up to 10 minutes for PE Cluster to stabilize prior to powering on PCVMs.
+                                </li>
+                                <li class="text-[11px] italic text-amber-700 font-semibold leading-relaxed">
+                                    Note: For Step 4, Genesis may take up to 10 minutes to come online prior to the cluster starting.
+                                </li>
+                            </ol>
+                        </div>
+
+                        <!-- Shutdown Guide -->
+                        <div class="rounded-2xl border border-rose-200 bg-rose-50/30 p-5">
+                            <h4 class="text-rose-700 text-xs font-bold uppercase tracking-widest mb-4 flex items-center">
+                                <i class="fas fa-arrow-down mr-2"></i> Shutdown Sequence
+                            </h4>
+                            <ol class="space-y-3">
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-rose-100 text-rose-600 font-bold text-[10px] mr-2.5 mt-0.5">0</span>
+                                    <span class="text-slate-700 text-xs font-semibold">NDK Webhook Safeguard</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-rose-100 text-rose-600 font-bold text-[10px] mr-2.5 mt-0.5">1</span>
+                                    <span class="text-slate-700 text-xs font-semibold">NKP Shutdown</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-rose-100 text-rose-600 font-bold text-[10px] mr-2.5 mt-0.5">2</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Stop FS Cluster</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-rose-100 text-rose-600 font-bold text-[10px] mr-2.5 mt-0.5">3</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Shutdown FSVMs</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-rose-100 text-rose-600 font-bold text-[10px] mr-2.5 mt-0.5">4</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Shutdown User VMs</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-rose-100 text-rose-600 font-bold text-[10px] mr-2.5 mt-0.5">5</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Stop PC Cluster</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-rose-100 text-rose-600 font-bold text-[10px] mr-2.5 mt-0.5">6</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Shutdown PCVMs</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-rose-100 text-rose-600 font-bold text-[10px] mr-2.5 mt-0.5">7</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Stop PE Cluster</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-rose-100 text-rose-600 font-bold text-[10px] mr-2.5 mt-0.5">8</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Shutdown CVMs</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-rose-100 text-rose-600 font-bold text-[10px] mr-2.5 mt-0.5">9</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Shutdown AHV</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-rose-100 text-rose-600 font-bold text-[10px] mr-2.5 mt-0.5">10</span>
+                                    <span class="text-slate-700 text-xs font-semibold">Power Off Hosts</span>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/70 text-center">
+                        <p class="text-slate-400 text-[10px] uppercase tracking-widest font-bold mb-1">Support</p>
+                        <a href="mailto:edward.keiper@nutanix.com" class="text-blue-600 hover:text-blue-700 text-sm font-semibold transition-colors">
+                            <i class="fas fa-envelope mr-1"></i> edward.keiper@nutanix.com
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disclaimer Modal -->
+    <div id="disclaimer-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                <div class="absolute inset-0 bg-slate-900 opacity-90"></div>
+            </div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border-t-4 border-rose-500">
+                <div class="bg-white px-8 pt-8 pb-8 text-center">
+                    <div class="mb-6 flex justify-center">
+                        <div class="bg-rose-100 p-4 rounded-full">
+                            <i class="fas fa-exclamation-triangle text-rose-600 text-4xl"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-900 mb-4 uppercase tracking-tight">System Disclaimer</h3>
+                    <p class="text-slate-600 mb-8 leading-relaxed text-sm">
+                        These management functions should be used with <strong>caution</strong>. Performing these operations can <strong>disrupt cluster services</strong> and potentially impact all <strong>running workloads</strong>.
+                    </p>
+                    <button onclick="toggleDisclaimer()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl transition-all uppercase tracking-widest text-xs shadow-lg">
+                        I Understand & Proceed
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

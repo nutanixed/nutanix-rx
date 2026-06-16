@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservations - Cluster Manager</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .btn-loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.1);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.5);
+            border-radius: 10px;
+        }
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .animate-pulse-soft {
+            animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        /* Modernize visual language to match dashboard updates. */
+        nav {
+            background: #fff !important;
+            backdrop-filter: none !important;
+            border-bottom: 1px solid rgb(226 232 240 / 1) !important;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+        }
+        main {
+            max-width: 92rem !important;
+        }
+        section > div[class*="rounded-[2.5rem]"],
+        #terminal-section > div,
+        .glass-card {
+            border-radius: 1rem !important;
+            border: 1px solid rgb(226 232 240 / 1) !important;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+            background: #fff !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        #terminal-section > div {
+            border-color: rgb(30 41 59 / 1) !important;
+        }
+        .rounded-\[2rem\],
+        .rounded-\[1\.5rem\],
+        .rounded-3xl {
+            border-radius: 1rem !important;
+        }
+        button[class*="bg-gradient-to-r"] {
+            background-image: none !important;
+            background-color: #2563eb !important;
+        }
+        .text-\[10px\].font-black.uppercase.tracking-\[0\.2em\] {
+            letter-spacing: 0.12em !important;
+        }
+        /* Reservation entry is now modal-based; keep card clipping clean. */
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans antialiased text-slate-900">
+    <!-- Navbar -->
+    <nav class="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="{{ url_for('index') }}" class="flex items-center group">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                            <i class="fas fa-server text-lg"></i>
+                        </div>
+                        <h1 class="ml-3 text-xl font-bold text-slate-900 tracking-tight">CLUSTER <span class="text-blue-600">MANAGER</span></h1>
+                    </a>
+                    <span class="ml-4 px-2.5 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-[0.2em] rounded-md border border-indigo-100">Booking Portal</span>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <a href="{{ url_for('index') }}" class="text-slate-500 hover:text-blue-600 transition-all flex items-center group text-xs font-bold uppercase tracking-widest">
+                        <i class="fas fa-chart-line text-lg mr-2 group-hover:-translate-y-0.5 transition-transform"></i>
+                        Dashboard
+                    </a>
+                    <div class="h-6 w-px bg-slate-200"></div>
+                    <div class="flex items-center space-x-3">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">User Session</p>
+                            <p class="text-xs font-bold text-slate-700">{{ session.username }}</p>
+                        </div>
+                        <a href="{{ url_for('logout') }}" class="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all">
+                            <i class="fas fa-sign-out-alt text-lg"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <header class="mb-10">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="h-1 w-8 bg-indigo-600 rounded-full"></div>
+                <p class="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.3em]">Extended Uptime Services</p>
+            </div>
+            <h2 class="text-4xl font-extrabold text-slate-900 tracking-tight">Booking <span class="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-blue-600">Reservations</span></h2>
+            <p class="text-slate-500 text-sm mt-3 max-w-2xl leading-relaxed">Schedule temporary cluster overrides to keep the environment online during projects, roadshows, or maintenance windows.</p>
+            <div class="mt-5">
+                <button id="btn-toggle-recovery" onclick="toggleRecoveryTools()" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 text-xs font-black uppercase tracking-widest hover:bg-slate-50 hover:text-blue-600 transition-all">
+                    <i id="icon-toggle-recovery" class="fas fa-tools"></i>
+                    <span id="text-toggle-recovery">Show Recovery Tools</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Automation Control Section -->
+            <section class="lg:col-span-1">
+                <div class="h-full bg-white rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden flex flex-col">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                        <h3 class="text-xs font-black text-slate-900 uppercase tracking-[0.2em] flex items-center">
+                            <i class="fas fa-robot text-blue-500 mr-3 text-base"></i> Scheduler
+                        </h3>
+                    </div>
+                    <div class="p-8 flex-1 flex flex-col">
+                        <p class="text-slate-600 text-xs mb-8 leading-relaxed">
+                            Control the global automated startup (8 AM) and shutdown (8 PM) tasks. Disable this to stop all automated power state changes.
+                        </p>
+                        
+                        <div class="mt-auto space-y-6">
+                            <div class="p-6 rounded-3xl border border-slate-100 bg-slate-50/50 relative overflow-hidden group">
+                                <div class="relative z-10">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Global Automation</p>
+                                    <div id="automation-status-display" class="flex items-center">
+                                        <div class="h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] mr-3 animate-pulse-soft"></div>
+                                        <span class="text-sm font-black text-slate-800 uppercase tracking-wide">System Active</span>
+                                    </div>
+                                </div>
+                                <div class="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-700">
+                                    <i class="fas fa-calendar-check text-8xl text-slate-900"></i>
+                                </div>
+                            </div>
+
+                            <div id="override-warning" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-100 mb-2">
+                                <div class="flex items-start">
+                                    <i class="fas fa-exclamation-triangle text-amber-500 mt-0.5 mr-3"></i>
+                                    <p class="text-[10px] font-bold text-amber-700 uppercase tracking-wider leading-relaxed">
+                                        Manual scheduler control is disabled while an Extended Uptime reservation is active.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button id="btn-automation-toggle" onclick="toggleAutomation()" class="w-full group relative overflow-hidden px-6 py-4 rounded-2xl bg-slate-900 text-white text-xs font-black uppercase tracking-[0.2em] transition-all hover:bg-slate-800 active:scale-[0.98] shadow-xl shadow-slate-900/20">
+                                <div class="flex items-center justify-center relative z-10">
+                                    <i id="icon-automation" class="fas fa-pause mr-3 group-hover:rotate-12 transition-transform"></i>
+                                    <span id="text-automation">Disable Scheduler</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Scheduled Pauses Section -->
+            <section class="lg:col-span-2">
+                <div class="h-full bg-white rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden flex flex-col">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                        <h3 class="text-xs font-black text-slate-900 uppercase tracking-[0.2em] flex items-center">
+                            <i class="fas fa-business-time text-indigo-500 mr-3 text-base"></i> Extended Uptime
+                        </h3>
+                        <div id="active-pause-indicator" class="hidden">
+                            <span class="px-3 py-1 bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-widest rounded-full ring-1 ring-indigo-200">Reservation Active</span>
+                        </div>
+                    </div>
+                    <div class="p-8 flex-1 flex flex-col">
+                        <div class="flex flex-col md:flex-row gap-8">
+                            <!-- List Column -->
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 id="list-title" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Reservations</h4>
+                                    <button onclick="togglePastReservations()" id="btn-toggle-past" class="px-3 py-1 rounded-full border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all">
+                                        Show Historical
+                                    </button>
+                                </div>
+                                <div id="scheduled-pauses-list" class="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                                    <!-- Pauses will be injected here -->
+                                    <div class="py-12 flex flex-col items-center justify-center text-center opacity-40">
+                                        <i class="fas fa-calendar-day text-4xl mb-3"></i>
+                                        <p class="text-xs font-bold uppercase tracking-widest">No reservations booked</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Add Column -->
+                            <div class="w-full md:w-72 shrink-0">
+                                <div id="add-pause-form-container">
+                                    <button onclick="toggleAddPauseForm()" id="btn-show-form" class="w-full aspect-square md:aspect-auto md:h-full py-8 rounded-[2rem] border-2 border-dashed border-slate-200 text-slate-400 hover:text-indigo-500 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all flex flex-col items-center justify-center group">
+                                        <div class="h-12 w-12 rounded-2xl bg-slate-100 group-hover:bg-indigo-100 group-hover:text-indigo-600 flex items-center justify-center mb-4 transition-all">
+                                            <i class="fas fa-calendar-plus text-xl"></i>
+                                        </div>
+                                        <span class="text-[10px] font-black uppercase tracking-[0.2em]">Book Reservation</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Recovery Grid -->
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+             <!-- Recovery Section -->
+             <section id="recovery-tools-section" class="lg:col-span-1 hidden">
+                <div class="h-full bg-white rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden flex flex-col">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50/50">
+                        <h3 class="text-xs font-black text-slate-900 uppercase tracking-[0.2em] flex items-center">
+                            <i class="fas fa-tools text-amber-500 mr-3 text-base"></i> Recovery Tools
+                        </h3>
+                    </div>
+                    <div class="p-8">
+                        <div class="group p-5 rounded-3xl border border-slate-100 bg-slate-50/30 hover:bg-amber-50/30 hover:border-amber-100 transition-all">
+                            <h4 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-2 flex items-center">
+                                Full Pod Refresh
+                                <span class="ml-auto px-2 py-0.5 bg-amber-100 text-amber-700 text-[8px] rounded uppercase">Safe</span>
+                            </h4>
+                            <p class="text-[10px] text-slate-500 leading-relaxed mb-4">Clears stuck pods, refreshes CSI, and restabilizes NAI/Kommander services.</p>
+                            <button onclick="runAdminJob('{{ url_for('recover_cluster_pods') }}', this)" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-amber-500/20">
+                                <i class="fas fa-sync-alt mr-2"></i> Run Sequence
+                            </button>
+                        </div>
+
+                        <div class="group p-5 rounded-3xl border border-slate-100 bg-slate-50/30 hover:bg-blue-50/30 hover:border-blue-100 transition-all mt-4">
+                            <h4 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-2 flex items-center">
+                                NAI Token Update
+                                <span class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-700 text-[8px] rounded uppercase">Registry</span>
+                            </h4>
+                            <p class="text-[10px] text-slate-500 leading-relaxed mb-4">Updates Docker registry secrets with a new token, uncordons nodes, and refreshes NAI pods.</p>
+                            
+                            <div class="space-y-3">
+                                <input type="password" id="nai-token-input" placeholder="Enter new Docker token..." class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all bg-white">
+                                <button onclick="runNaiTokenUpdate(this)" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/20">
+                                    <i class="fas fa-key mr-2"></i> Update Token
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Terminal Output Section -->
+            <section id="terminal-section" class="lg:col-span-2 hidden animate-in fade-in zoom-in duration-300">
+                <div class="h-full bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-800 flex flex-col">
+                    <div class="bg-slate-800/50 px-8 py-4 border-b border-slate-800 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <div class="flex space-x-2 mr-6">
+                                <div class="w-3 h-3 rounded-full bg-rose-500/40"></div>
+                                <div class="w-3 h-3 rounded-full bg-amber-500/40"></div>
+                                <div class="w-3 h-3 rounded-full bg-emerald-500/40"></div>
+                            </div>
+                            <span id="terminal-title" class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Execution Console</span>
+                        </div>
+                        <button onclick="closeTerminal()" class="h-8 w-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition-all">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="p-8 flex-1">
+                        <div class="bg-black/20 rounded-2xl p-6 h-full min-h-[300px] border border-white/5">
+                            <pre id="terminal-output" class="text-blue-400 font-mono text-xs leading-relaxed overflow-x-auto max-h-[400px] whitespace-pre-wrap custom-scrollbar"></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Book Reservation Modal -->
+    <div id="add-pause-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4 py-6 sm:p-6">
+            <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm" onclick="toggleAddPauseForm()"></div>
+            <div class="relative w-full max-w-2xl">
+                <div id="add-pause-form" class="bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden">
+                    <div class="px-6 py-5 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="h-10 w-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                                <i class="fas fa-calendar-plus"></i>
+                            </div>
+                            <div>
+                                <h3 id="add-pause-modal-title" class="text-lg font-bold text-slate-900 tracking-tight">Book Reservation</h3>
+                                <p class="text-xs text-slate-500">Create or update extended uptime reservation windows.</p>
+                            </div>
+                        </div>
+                        <button onclick="toggleAddPauseForm()" class="h-9 w-9 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="p-6 space-y-5">
+                        <input type="hidden" id="edit-pause-id">
+                        <div>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Project / Reason</label>
+                            <input type="text" id="pause-desc" placeholder="e.g. Nordic Roadshow..." class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">First Name</label>
+                                <input type="text" id="pause-fname" placeholder="John" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Last Name</label>
+                                <input type="text" id="pause-lname" placeholder="Doe" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Email Address</label>
+                            <input type="email" id="pause-email" placeholder="john.doe@nutanix.com" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all">
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Start</label>
+                                <input type="datetime-local" id="pause-start" step="900" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">End</label>
+                                <input type="datetime-local" id="pause-end" step="900" class="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all">
+                            </div>
+                            <div class="pt-1">
+                                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Quick Time Presets</p>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button type="button" onclick="setQuickWindow(720)" class="px-3 py-2 rounded-lg border border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all">12 Hours</button>
+                                    <button type="button" onclick="setQuickWindow(1440)" class="px-3 py-2 rounded-lg border border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all">24 Hours</button>
+                                    <button type="button" onclick="setQuickWindow(2160)" class="px-3 py-2 rounded-lg border border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all">36 Hours</button>
+                                    <button type="button" onclick="setQuickWindow(2880)" class="px-3 py-2 rounded-lg border border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all">48 Hours</button>
+                                </div>
+                            </div>
+                            <div class="pt-1">
+                                <p id="date-time-status" class="hidden text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                                    Date/time selected and applied.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2 pt-2">
+                            <button onclick="saveOverride()" id="btn-save-override" class="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-500/25 active:scale-95">Confirm Reservation</button>
+                            <button onclick="toggleAddPauseForm()" class="w-full py-3 text-slate-400 hover:text-slate-600 text-[10px] font-black uppercase tracking-widest transition-all">Discard</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Validation Error Modal -->
+    <dialog id="validation-modal" class="max-w-md w-[calc(100%-2rem)] rounded-3xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:backdrop-blur-sm animate-in fade-in zoom-in duration-300">
+        <div class="p-8">
+            <div class="flex items-center gap-4 mb-6 text-rose-600">
+                <div class="h-12 w-12 shrink-0 flex items-center justify-center rounded-2xl bg-rose-50 border border-rose-100">
+                    <i class="fas fa-exclamation-circle text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-black uppercase tracking-widest">Action Required</h3>
+                    <p class="text-[10px] font-bold text-rose-400 uppercase tracking-widest mt-0.5">Validation Error</p>
+                </div>
+            </div>
+            
+            <p id="validation-message" class="text-slate-600 text-sm leading-relaxed mb-8">
+                All fields are required. Please complete the form before saving.
+            </p>
+
+            <button onclick="document.getElementById('validation-modal').close()" 
+                class="w-full py-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:bg-slate-800 active:scale-95 shadow-xl shadow-slate-900/10">
+                Got it
+            </button>
+        </div>
+    </dialog>
+
+    <!-- Confirmation Modal -->
+    <dialog id="confirm-modal" class="max-w-md w-[calc(100%-2rem)] rounded-3xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:backdrop-blur-sm animate-in fade-in zoom-in duration-300">
+        <div class="p-8">
+            <div class="flex items-center gap-4 mb-6 text-amber-600">
+                <div class="h-12 w-12 shrink-0 flex items-center justify-center rounded-2xl bg-amber-50 border border-amber-100">
+                    <i class="fas fa-question-circle text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-black uppercase tracking-widest">Confirm Action</h3>
+                    <p class="text-[10px] font-bold text-amber-400 uppercase tracking-widest mt-0.5">Verification Required</p>
+                </div>
+            </div>
+            
+            <p id="confirm-message" class="text-slate-600 text-sm leading-relaxed mb-8">
+                Are you sure you want to proceed with this action?
+            </p>
+
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('confirm-modal').close()" 
+                    class="flex-1 py-4 rounded-2xl bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:bg-slate-200 active:scale-95">
+                    Cancel
+                </button>
+                <button id="confirm-action-btn"
+                    class="flex-1 py-4 rounded-2xl bg-rose-600 text-white text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:bg-rose-500 active:scale-95 shadow-xl shadow-rose-600/20">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Password Prompt Modal -->
+    <dialog id="password-modal" class="max-w-md w-[calc(100%-2rem)] rounded-3xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:backdrop-blur-sm animate-in fade-in zoom-in duration-300">
+        <div class="p-8">
+            <div class="flex items-center gap-4 mb-6 text-slate-900">
+                <div class="h-12 w-12 shrink-0 flex items-center justify-center rounded-2xl bg-slate-50 border border-slate-100">
+                    <i class="fas fa-lock text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-black uppercase tracking-widest">Authentication</h3>
+                    <p id="password-prompt-title" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Password Required</p>
+                </div>
+            </div>
+            
+            <p id="password-message" class="text-slate-600 text-sm leading-relaxed mb-6">
+                Please enter the administrative password to proceed.
+            </p>
+
+            <div class="mb-8">
+                <input type="password" id="admin-password-input" placeholder="••••••••" 
+                    class="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 text-sm focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 outline-none transition-all tracking-widest font-mono">
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('password-modal').close()" 
+                    class="flex-1 py-4 rounded-2xl bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:bg-slate-200 active:scale-95">
+                    Cancel
+                </button>
+                <button id="password-submit-btn"
+                    class="flex-1 py-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:bg-slate-800 active:scale-95 shadow-xl shadow-slate-900/20">
+                    Verify
+                </button>
+            </div>
+        </div>
+    </dialog>
+
+    <script>
+        const ADMIN_PWD = "{{ admin_password }}";
+        let confirmCallback = null;
+        let passwordCallback = null;
+
+        function toLocalDatetimeInputValue(date) {
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+        }
+
+        function roundUpToQuarterHour(date) {
+            const d = new Date(date);
+            d.setSeconds(0, 0);
+            const mins = d.getMinutes();
+            const rounded = Math.ceil(mins / 15) * 15;
+            if (rounded === 60) {
+                d.setHours(d.getHours() + 1, 0, 0, 0);
+            } else {
+                d.setMinutes(rounded, 0, 0);
+            }
+            return d;
+        }
+
+        function setQuickWindow(durationMinutes) {
+            const startInput = document.getElementById('pause-start');
+            const endInput = document.getElementById('pause-end');
+            const start = roundUpToQuarterHour(new Date());
+            const end = new Date(start.getTime() + durationMinutes * 60000);
+            startInput.value = toLocalDatetimeInputValue(start);
+            endInput.value = toLocalDatetimeInputValue(end);
+            applyDateTimeSelection(false);
+        }
+
+        function applyDateTimeSelection(showErrors = true) {
+            const startInput = document.getElementById('pause-start');
+            const endInput = document.getElementById('pause-end');
+            const status = document.getElementById('date-time-status');
+            if (!startInput.value || !endInput.value) {
+                status.classList.add('hidden');
+                if (showErrors) showModal("Please select both start and end date/time before applying.");
+                return;
+            }
+            if (endInput.value <= startInput.value) {
+                status.classList.add('hidden');
+                if (showErrors) showModal("End time must be after the start time.");
+                return;
+            }
+            status.classList.remove('hidden');
+        }
+
+        function attachDateInputHelpers() {
+            const startInput = document.getElementById('pause-start');
+            const endInput = document.getElementById('pause-end');
+
+            const syncMinEnd = () => {
+                if (!startInput.value) return;
+                endInput.min = startInput.value;
+                if (endInput.value && endInput.value <= startInput.value) {
+                    const start = new Date(startInput.value);
+                    const end = new Date(start.getTime() + 60 * 60000);
+                    endInput.value = toLocalDatetimeInputValue(end);
+                }
+                applyDateTimeSelection(false);
+            };
+
+            startInput.addEventListener('change', syncMinEnd);
+            startInput.addEventListener('input', syncMinEnd);
+            endInput.addEventListener('change', () => applyDateTimeSelection(false));
+            endInput.addEventListener('input', () => applyDateTimeSelection(false));
+        }
+
+        function toggleRecoveryTools() {
+            const section = document.getElementById('recovery-tools-section');
+            const text = document.getElementById('text-toggle-recovery');
+            const icon = document.getElementById('icon-toggle-recovery');
+            const willShow = section.classList.contains('hidden');
+
+            if (willShow) {
+                section.classList.remove('hidden');
+                text.innerText = 'Hide Recovery Tools';
+                icon.classList.remove('fa-tools');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                section.classList.add('hidden');
+                text.innerText = 'Show Recovery Tools';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-tools');
+            }
+        }
+
+        function showModal(msg) {
+            document.getElementById('validation-message').innerText = msg;
+            document.getElementById('validation-modal').showModal();
+        }
+
+        function showConfirm(msg, callback) {
+            document.getElementById('confirm-message').innerText = msg;
+            confirmCallback = callback;
+            document.getElementById('confirm-modal').showModal();
+        }
+
+        function showPasswordModal(msg, title, callback) {
+            document.getElementById('password-message').innerText = msg;
+            if (title) document.getElementById('password-prompt-title').innerText = title;
+            document.getElementById('admin-password-input').value = '';
+            passwordCallback = callback;
+            document.getElementById('password-modal').showModal();
+            setTimeout(() => document.getElementById('admin-password-input').focus(), 100);
+        }
+
+        document.getElementById('confirm-action-btn').addEventListener('click', () => {
+            document.getElementById('confirm-modal').close();
+            if (confirmCallback) confirmCallback();
+        });
+
+        document.getElementById('password-submit-btn').addEventListener('click', () => {
+            const input = document.getElementById('admin-password-input').value;
+            if (input !== ADMIN_PWD) {
+                showModal("Incorrect password.");
+                return;
+            }
+            document.getElementById('password-modal').close();
+            if (passwordCallback) passwordCallback();
+        });
+
+        // Allow 'Enter' key in password field
+        document.getElementById('admin-password-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('password-submit-btn').click();
+        });
+
+        // Check automation status on load
+        async function updateAutomationUI() {
+            try {
+                const response = await fetch("{{ url_for('automation_status_api') }}");
+                const data = await response.json();
+                
+                const btn = document.getElementById('btn-automation-toggle');
+                const icon = document.getElementById('icon-automation');
+                const text = document.getElementById('text-automation');
+                const display = document.getElementById('automation-status-display');
+                const warning = document.getElementById('override-warning');
+                
+                // Handle active override disabling the button
+                if (data.scheduled_pause_active) {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-50', 'grayscale', 'cursor-not-allowed');
+                    warning.classList.remove('hidden');
+                } else {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'grayscale', 'cursor-not-allowed');
+                    warning.classList.add('hidden');
+                }
+
+                if (data.paused) {
+                    icon.classList.replace('fa-pause', 'fa-play');
+                    text.innerText = 'Enable Scheduler';
+                    btn.classList.replace('bg-slate-900', 'bg-emerald-600');
+                    btn.classList.replace('hover:bg-slate-800', 'hover:bg-emerald-700');
+                    display.innerHTML = `
+                        <div class="h-3 w-3 rounded-full bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)] mr-3 animate-pulse-soft"></div>
+                        <span class="text-sm font-black text-slate-800 uppercase tracking-wide">System Paused</span>
+                    `;
+                } else {
+                    icon.classList.replace('fa-play', 'fa-pause');
+                    text.innerText = 'Disable Scheduler';
+                    btn.classList.replace('bg-emerald-600', 'bg-slate-900');
+                    btn.classList.replace('hover:bg-emerald-700', 'hover:bg-slate-800');
+                    display.innerHTML = `
+                        <div class="h-3 w-3 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] mr-3 animate-pulse-soft"></div>
+                        <span class="text-sm font-black text-slate-800 uppercase tracking-wide">System Active</span>
+                    `;
+                }
+            } catch (err) {
+                console.error("Failed to fetch automation status:", err);
+            }
+        }
+
+        async function toggleAutomation() {
+            const btn = document.getElementById('btn-automation-toggle');
+            const isPaused = btn.innerText.includes('Enable');
+            
+            // Password protection
+            showPasswordModal("Enter password to " + (isPaused ? "enable" : "disable") + " scheduler:", (isPaused ? "Enable" : "Disable") + " Scheduler", async () => {
+                const endpoint = isPaused ? "{{ url_for('automation_unpause_api') }}" : "{{ url_for('automation_pause_api') }}";
+                
+                btn.classList.add('btn-loading');
+                try {
+                    const response = await fetch(endpoint, { method: 'POST' });
+                    if (!response.ok) throw new Error("Server error");
+                    await updateAutomationUI();
+                } catch (err) {
+                    showModal("Failed to update scheduler: " + err.message);
+                } finally {
+                    btn.classList.remove('btn-loading');
+                }
+            });
+        }
+
+        async function runNaiTokenUpdate(btn) {
+            const token = document.getElementById('nai-token-input').value;
+            if (!token) {
+                showModal("Please enter a token first.");
+                return;
+            }
+
+            // Password protection
+            showPasswordModal("Enter administrative password to update NAI token:", "Update Registry Token", () => {
+                showConfirm("Are you sure you want to update the NAI registry token?", async () => {
+                btn.classList.add('btn-loading');
+                const originalContent = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Initializing...';
+                
+                try {
+                    const response = await fetch("{{ url_for('recover_nai_token') }}", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: token })
+                    });
+                    
+                    if (!response.ok) throw new Error(await response.text());
+                    
+                    const data = await response.json();
+                    const jobId = data.job_id;
+                    
+                    // Show terminal and start polling
+                    const terminalSection = document.getElementById('terminal-section');
+                    terminalSection.classList.remove('hidden');
+                    terminalSection.scrollIntoView({ behavior: 'smooth' });
+                    
+                    const output = document.getElementById('terminal-output');
+                    output.innerText = "🚀 Token update job queued...\n";
+                    document.getElementById('nai-token-input').value = '';
+
+                    const poll = setInterval(async () => {
+                        try {
+                            const res = await fetch("{{ url_for('job_status', job_id='ID_PLACEHOLDER') }}".replace('ID_PLACEHOLDER', jobId));
+                            const job = await res.json();
+                            output.innerText = job.output;
+                            output.scrollTop = output.scrollHeight;
+                            
+                            if (job.status !== "running") {
+                                clearInterval(poll);
+                                btn.classList.remove('btn-loading');
+                                btn.innerHTML = originalContent;
+                            }
+                        } catch (e) {
+                            clearInterval(poll);
+                            output.innerText += "\n❌ Error polling status: " + e.message;
+                            btn.classList.remove('btn-loading');
+                            btn.innerHTML = originalContent;
+                        }
+                    }, 1000);
+
+                } catch (err) {
+                    showModal("Failed to start token update: " + err.message);
+                    btn.classList.remove('btn-loading');
+                    btn.innerHTML = originalContent;
+                }
+            });
+        });
+    }
+
+    function runAdminJob(url, btn) {
+            // Password protection
+            showPasswordModal("Enter administrative password to run recovery sequence:", "System Recovery", () => {
+                showConfirm("Are you sure you want to run this recovery script?", () => {
+                btn.classList.add('btn-loading');
+                const originalContent = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Executing...';
+                
+                const terminalSection = document.getElementById('terminal-section');
+                terminalSection.classList.remove('hidden');
+                terminalSection.scrollIntoView({ behavior: 'smooth' });
+                
+                const output = document.getElementById('terminal-output');
+                output.innerText = "Initializing recovery sequence...\n";
+                
+                fetch(url)
+                    .then(response => {
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        
+                        function read() {
+                            return reader.read().then(({ done, value }) => {
+                                if (done) {
+                                    btn.classList.remove('btn-loading');
+                                    btn.innerHTML = originalContent;
+                                    output.innerText += "\n--- PROCESS COMPLETED ---";
+                                    return;
+                                }
+                                output.innerText += decoder.decode(value, { stream: true });
+                                output.scrollTop = output.scrollHeight;
+                                return read();
+                            });
+                        }
+                        return read();
+                    })
+                    .catch(err => {
+                        output.innerText += "\nError: " + err.message;
+                        btn.classList.remove('btn-loading');
+                        btn.innerHTML = originalContent;
+                    });
+            });
+        });
+    }
+
+        function closeTerminal() {
+            document.getElementById('terminal-section').classList.add('hidden');
+        }
+
+        // Scheduled Pauses Management
+        let currentPauses = [];
+        let showPast = false;
+
+        function togglePastReservations() {
+            showPast = !showPast;
+            const btn = document.getElementById('btn-toggle-past');
+            const title = document.getElementById('list-title');
+            
+            if (showPast) {
+                btn.innerText = 'Show Active Only';
+                btn.classList.add('bg-slate-100', 'text-slate-900', 'border-slate-300');
+                title.innerText = 'All Reservations';
+            } else {
+                btn.innerText = 'Show Historical';
+                btn.classList.remove('bg-slate-100', 'text-slate-900', 'border-slate-300');
+                title.innerText = 'Active Reservations';
+            }
+            
+            updateScheduledPausesUI();
+        }
+
+        function toggleAddPauseForm() {
+            const modal = document.getElementById('add-pause-modal');
+            const status = document.getElementById('date-time-status');
+            const title = document.getElementById('add-pause-modal-title');
+
+            if (modal.classList.contains('hidden')) {
+                // Clearing for new
+                document.getElementById('edit-pause-id').value = '';
+                document.getElementById('pause-desc').value = '';
+                document.getElementById('pause-fname').value = '';
+                document.getElementById('pause-lname').value = '';
+                document.getElementById('pause-email').value = '';
+                document.getElementById('pause-start').value = '';
+                document.getElementById('pause-end').value = '';
+                document.getElementById('btn-save-override').innerText = 'Confirm Reservation';
+                title.innerText = 'Book Reservation';
+                status.classList.add('hidden');
+                modal.classList.remove('hidden');
+                setTimeout(() => document.getElementById('pause-desc').focus(), 50);
+                return;
+            }
+
+            modal.classList.add('hidden');
+        }
+
+        function editOverride(id) {
+            const pause = currentPauses.find(p => p.id === id);
+            if (!pause) return;
+            const status = document.getElementById('date-time-status');
+
+            document.getElementById('edit-pause-id').value = pause.id;
+            document.getElementById('pause-desc').value = pause.description || '';
+            document.getElementById('pause-fname').value = pause.first_name || '';
+            document.getElementById('pause-lname').value = pause.last_name || '';
+            document.getElementById('pause-email').value = pause.email || '';
+            
+            // Format for datetime-local (YYYY-MM-DDThh:mm)
+            if (pause.start_time) document.getElementById('pause-start').value = pause.start_time.substring(0, 16);
+            if (pause.end_time) document.getElementById('pause-end').value = pause.end_time.substring(0, 16);
+            status.classList.remove('hidden');
+
+            document.getElementById('btn-save-override').innerText = 'Update Reservation';
+            document.getElementById('add-pause-modal-title').innerText = 'Edit Reservation';
+            
+            document.getElementById('add-pause-modal').classList.remove('hidden');
+        }
+
+        async function updateScheduledPausesUI() {
+            try {
+                const response = await fetch("{{ url_for('list_scheduled_pauses') }}?include_past=" + showPast);
+                const data = await response.json();
+                currentPauses = data.pauses;
+                const list = document.getElementById('scheduled-pauses-list');
+                const indicator = document.getElementById('active-pause-indicator');
+                
+                if (data.scheduled_pause_active) {
+                    indicator.classList.remove('hidden');
+                } else {
+                    indicator.classList.add('hidden');
+                }
+
+                if (data.pauses.length === 0) {
+                    list.innerHTML = `
+                        <div class="py-12 flex flex-col items-center justify-center text-center opacity-40">
+                            <i class="fas fa-calendar-day text-4xl mb-3 text-slate-300"></i>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">No overrides scheduled</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = data.pauses.map(pause => {
+                    const now = new Date();
+                    const start_dt = new Date(pause.start_time);
+                    const end_dt = new Date(pause.end_time);
+                    
+                    const start = start_dt.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+                    const end = end_dt.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+                    const isActive = start_dt <= now && now <= end_dt;
+                    const isPast = end_dt < now;
+                    const owner = (pause.first_name || pause.last_name) ? `${pause.first_name || ''} ${pause.last_name || ''}`.trim() : 'Unknown';
+                    
+                    let cardClass = 'border-slate-100 bg-white shadow-sm';
+                    if (isActive) cardClass = 'border-indigo-200 bg-indigo-50/50 shadow-lg shadow-indigo-500/5';
+                    if (isPast) cardClass = 'border-slate-100 bg-slate-50/30 opacity-60 grayscale-[0.5]';
+
+                    return `
+                        <div class="p-5 rounded-[1.5rem] border ${cardClass} transition-all group relative overflow-hidden">
+                            <div class="relative z-10">
+                                <div class="flex justify-between items-start mb-3">
+                                    <div class="flex items-center">
+                                        ${isActive ? '<div class="h-2 w-2 rounded-full bg-indigo-500 mr-3 animate-pulse"></div>' : ''}
+                                        <div>
+                                            <div class="flex items-center">
+                                                <h4 class="text-[10px] font-black text-slate-900 uppercase tracking-[0.15em]">${pause.description || 'Extended Uptime'}</h4>
+                                                ${isPast ? '<span class="ml-2 px-1.5 py-0.5 bg-slate-200 text-slate-500 text-[7px] font-black uppercase tracking-tighter rounded-md">COMPLETED</span>' : ''}
+                                            </div>
+                                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">${owner} ${pause.email ? `• ${pause.email}` : ''}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all">
+                                        <button onclick="editOverride('${pause.id}')" class="h-7 w-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-blue-500 hover:bg-blue-50">
+                                            <i class="fas fa-edit text-xs"></i>
+                                        </button>
+                                        <button onclick="deleteScheduledPause('${pause.id}')" class="h-7 w-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50">
+                                            <i class="fas fa-trash-alt text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="flex items-center text-[10px] font-bold text-slate-400 space-x-4">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-sign-in-alt mr-2 opacity-50"></i>
+                                        <span>${start}</span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <i class="fas fa-sign-out-alt mr-2 opacity-50"></i>
+                                        <span>${end}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            ${isActive ? '<div class="absolute -right-4 -bottom-4 opacity-[0.05]"><i class="fas fa-clock text-6xl text-indigo-900"></i></div>' : ''}
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error("Failed to fetch overrides:", err);
+            }
+        }
+
+        async function saveOverride() {
+            const id = document.getElementById('edit-pause-id').value;
+            const desc = document.getElementById('pause-desc').value;
+            const fname = document.getElementById('pause-fname').value;
+            const lname = document.getElementById('pause-lname').value;
+            const email = document.getElementById('pause-email').value;
+            const start = document.getElementById('pause-start').value;
+            const end = document.getElementById('pause-end').value;
+
+            if (!desc || !fname || !lname || !email || !start || !end) {
+                showModal("All fields are required. Please complete the form.");
+                return;
+            }
+
+            const payload = {
+                description: desc,
+                first_name: fname,
+                last_name: lname,
+                email: email,
+                start_time: start,
+                end_time: end
+            };
+
+            const url = id ? "{{ url_for('update_scheduled_pause', pause_id='ID_PLACEHOLDER') }}".replace('ID_PLACEHOLDER', id) : "{{ url_for('add_scheduled_pause') }}";
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    toggleAddPauseForm();
+                    await updateScheduledPausesUI();
+                } else {
+                    const data = await response.json();
+                    showModal("Error: " + data.error);
+                }
+            } catch (err) {
+                showModal("Failed to save reservation: " + err.message);
+            }
+        }
+
+        async function deleteScheduledPause(id) {
+            showConfirm("Are you sure you want to delete this reservation?", async () => {
+                try {
+                    const response = await fetch("{{ url_for('delete_scheduled_pause', pause_id='ID_PLACEHOLDER') }}".replace('ID_PLACEHOLDER', id), {
+                        method: 'DELETE'
+                    });
+
+                    if (response.ok) {
+                        await updateScheduledPausesUI();
+                    } else {
+                        showModal("Failed to delete reservation.");
+                    }
+                } catch (err) {
+                    showModal("Error: " + err.message);
+                }
+            });
+        }
+
+        // Initialize UI
+        updateAutomationUI();
+        updateScheduledPausesUI();
+        attachDateInputHelpers();
+        
+        // Refresh UI periodically
+        setInterval(() => {
+            updateAutomationUI();
+            updateScheduledPausesUI();
+        }, 30000);
+    </script>
+</body>
+</html>

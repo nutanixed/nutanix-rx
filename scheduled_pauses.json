@@ -1,0 +1,108 @@
+[
+  {
+    "id": "5f419180-efde-4c38-8233-0967bf961fa8",
+    "start_time": "2026-04-29T18:47",
+    "end_time": "2026-04-30T18:47",
+    "description": "Nordic NAI Road Show",
+    "created_at": "2026-04-29T16:48:07.433350",
+    "first_name": "Peter",
+    "last_name": "Johansson",
+    "email": "peter.johansson@nutanix.com",
+    "updated_at": "2026-04-29T21:19:13.038297"
+  },
+  {
+    "id": "39e95305-e233-42da-adff-af575aee5b25",
+    "start_time": "2026-05-04T09:00",
+    "end_time": "2026-05-05T16:00",
+    "description": "Nordic NAI Road Show",
+    "created_at": "2026-04-29T16:48:54.780141",
+    "first_name": "Peter",
+    "last_name": "Johansson",
+    "email": "peter.johansson@nutanix.com",
+    "updated_at": "2026-05-05T20:36:31.502326"
+  },
+  {
+    "id": "8f72a1e2-8251-4228-9125-f2fd7543de19",
+    "start_time": "2026-05-07T16:32",
+    "end_time": "2026-05-08T16:33",
+    "description": "Nordic Roadshow prep",
+    "first_name": "Peter",
+    "last_name": "Johansson",
+    "email": "peter.johansson@nutanix.com",
+    "created_at": "2026-05-07T14:33:12.923428"
+  },
+  {
+    "id": "288a892e-61f0-45e6-b6bf-05d648ca74a7",
+    "start_time": "2026-05-11T09:00",
+    "end_time": "2026-05-12T22:00",
+    "description": "Nordic NAI Road Show Helsinki",
+    "created_at": "2026-04-29T16:49:45.457956",
+    "first_name": "Peter",
+    "last_name": "Johansson",
+    "email": "peter.johansson@nutanix.com",
+    "updated_at": "2026-04-29T21:19:21.400354"
+  },
+  {
+    "id": "c1861350-9b5b-4677-9805-3c84880c8609",
+    "start_time": "2026-05-12T09:00",
+    "end_time": "2026-05-13T22:00",
+    "description": "Nordic NAI Road show Iceland",
+    "first_name": "Peter",
+    "last_name": "Johansson",
+    "email": "peter.johansson@nutanix.com",
+    "created_at": "2026-05-07T11:36:18.857661"
+  },
+  {
+    "id": "7149f022-8692-4871-885d-9ea554e90fed",
+    "start_time": "2026-05-18T09:00",
+    "end_time": "2026-05-19T22:00",
+    "description": "Nordic NAI Road Show Stockholm & Ballerup",
+    "created_at": "2026-04-29T16:50:28.018421",
+    "first_name": "Peter",
+    "last_name": "Johansson",
+    "email": "peter.johansson@nutanix.com",
+    "updated_at": "2026-04-29T21:19:25.448990"
+  },
+  {
+    "id": "3e60935b-32a8-45dc-8440-8d3c66943796",
+    "start_time": "2026-05-20T19:00",
+    "end_time": "2026-05-21T22:00",
+    "description": "Nordic NAI Road Show Oslo",
+    "created_at": "2026-04-29T16:50:59.373094",
+    "first_name": "Peter",
+    "last_name": "Johansson",
+    "email": "peter.johansson@nutanix.com",
+    "updated_at": "2026-05-20T14:20:53.856827"
+  },
+  {
+    "id": "83b87e60-ccb4-40fc-b59a-82467b462152",
+    "start_time": "2026-05-27T09:00",
+    "end_time": "2026-05-28T22:00",
+    "description": "Nordic NAI Road Show Gothenburg",
+    "created_at": "2026-04-29T16:51:33.432307",
+    "first_name": "Peter",
+    "last_name": "Johansson",
+    "email": "peter.johansson@nutanix.com",
+    "updated_at": "2026-04-29T21:19:33.666464"
+  },
+  {
+    "id": "a8705de1-6876-4898-9085-245d01234afd",
+    "start_time": "2026-06-12T19:35",
+    "end_time": "2026-06-15T19:35",
+    "description": "Maintenance",
+    "first_name": "Ed",
+    "last_name": "Keiper",
+    "email": "edward.keiper@nutanix.com",
+    "created_at": "2026-06-12T23:35:21.989843"
+  },
+  {
+    "id": "963238da-6153-4bf0-ba1a-860e70f1f9ff",
+    "start_time": "2026-06-15T23:00",
+    "end_time": "2026-06-17T11:00",
+    "description": "Maintenance",
+    "first_name": "Ed",
+    "last_name": "Keiper",
+    "email": "edward.keiper@nutanix.com",
+    "created_at": "2026-06-16T02:57:00.416804"
+  }
+]
