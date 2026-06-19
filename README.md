@@ -51,6 +51,10 @@ Edit `.env` and set all required values for your environment:
 - Flask/session settings
 - optional integrations (Slack webhook, logout redirect)
 
+`MGMT_VM_NAMES` supports a comma-separated mix of selectors:
+- entries ending with `_` are prefix matches (example: `system_` matches all VMs whose names start with `system_`)
+- entries not ending with `_` are exact VM names (example: `auto_DND_calm_policy_engine_1f4dfdb8`)
+
 Do **not** commit `.env`.
 
 ## 4) Build and deploy
