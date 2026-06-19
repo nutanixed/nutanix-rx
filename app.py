@@ -344,8 +344,13 @@ def check_mgmt_status():
                 logger.warning("No MGMT_VM_NAMES found in environment")
                 return "down"
 
-            # Create a map of name -> vm for quick lookup
-            vm_map = {vm.get('spec', {}).get('name', ''): vm for vm in entities}
+            # Create a map of name -> vm for quick lookup.
+            # Ignore VMs without a name to avoid empty-key collisions.
+            vm_map = {}
+            for vm in entities:
+                vm_name = vm.get('spec', {}).get('name')
+                if vm_name:
+                    vm_map[vm_name] = vm
 
             # Support both exact VM names and prefix patterns.
             # Any entry that ends with "_" is treated as a prefix.

@@ -19,8 +19,8 @@ REMOTE="origin"
 BRANCH="main"
 TAG_PREFIX="v"
 COMMIT_MESSAGE=""
-DEFAULT_GIT_NAME="ntnx-cm release bot"
-DEFAULT_GIT_EMAIL="ntnx-cm-release-bot@local"
+DEFAULT_GIT_NAME="Ed Keiper"
+DEFAULT_GIT_EMAIL="edward.keiper@nutanix.com"
 
 usage() {
   cat <<'EOF'
@@ -123,15 +123,21 @@ fi
 # Priority:
 # 1) SAFE_RELEASE_GIT_NAME / SAFE_RELEASE_GIT_EMAIL env vars
 # 2) Existing git config user.name / user.email
-# 3) Script defaults (to avoid interactive failures)
+# 3) Script defaults
+#
+# If user.name/email are missing in git config, set them locally for this repo.
 GIT_NAME="${SAFE_RELEASE_GIT_NAME:-$(git config user.name || true)}"
 GIT_EMAIL="${SAFE_RELEASE_GIT_EMAIL:-$(git config user.email || true)}"
 
 if [[ -z "$GIT_NAME" ]]; then
   GIT_NAME="$DEFAULT_GIT_NAME"
+  git config user.name "$GIT_NAME"
+  echo "Configured local git user.name to '$GIT_NAME'"
 fi
 if [[ -z "$GIT_EMAIL" ]]; then
   GIT_EMAIL="$DEFAULT_GIT_EMAIL"
+  git config user.email "$GIT_EMAIL"
+  echo "Configured local git user.email to '$GIT_EMAIL'"
 fi
 
 echo "Using git identity: $GIT_NAME <$GIT_EMAIL>"
