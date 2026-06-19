@@ -12,10 +12,137 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-        /* Full redesign pass: mimic ntnxlablinks tile language while preserving controls. */
+        /* Service-catalog aligned base styling */
         body {
             background: #f1f5f9;
             color: #0f172a;
+        }
+        body.dark-mode { background-color: #1f2937 !important; color: #e5e7eb !important; }
+        body.dark-mode nav { background-color: #273244 !important; border-color: #475569 !important; }
+        body.dark-mode .bg-white { background-color: #334155 !important; }
+        body.dark-mode .bg-slate-50,
+        body.dark-mode .bg-slate-50\/50 { background-color: #273244 !important; }
+        body.dark-mode .border-slate-100,
+        body.dark-mode .border-slate-200 { border-color: #64748b !important; }
+        body.dark-mode .text-slate-900 { color: #f8fafc !important; }
+        body.dark-mode .text-slate-700,
+        body.dark-mode .text-slate-600,
+        body.dark-mode .text-slate-500,
+        body.dark-mode .text-slate-400,
+        body.dark-mode .text-blue-900,
+        body.dark-mode .text-indigo-900,
+        body.dark-mode .text-emerald-900,
+        body.dark-mode .text-rose-900,
+        body.dark-mode .text-amber-900 { color: #dbe4f0 !important; }
+        body.dark-mode .text-blue-700,
+        body.dark-mode .text-indigo-700,
+        body.dark-mode .text-emerald-700,
+        body.dark-mode .text-rose-700,
+        body.dark-mode .text-amber-700 { color: #c6d7ff !important; }
+        body.dark-mode .app-logo { filter: brightness(0) invert(1); }
+        body.dark-mode main section > div.relative.overflow-hidden,
+        body.dark-mode #automation-override-notice,
+        body.dark-mode main > div.grid > div,
+        body.dark-mode main > div.grid > a,
+        body.dark-mode .group.rounded-2xl.border,
+        body.dark-mode .rounded-2xl.border,
+        body.dark-mode .rounded-xl.border,
+        body.dark-mode .granular-content .bg-white.rounded-2xl {
+            background: #334155 !important;
+            border-color: #64748b !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+        }
+        body.dark-mode .granular-tab {
+            background: #334155 !important;
+            border-color: #64748b !important;
+            color: #cbd5e1 !important;
+        }
+        body.dark-mode .granular-tab.bg-blue-600 {
+            background: #2563eb !important;
+            border-color: #2563eb !important;
+            color: #ffffff !important;
+        }
+        body.dark-mode .granular-content button,
+        body.dark-mode #refresh-status-btn,
+        body.dark-mode nav a.bg-slate-100,
+        body.dark-mode nav button.bg-slate-100 {
+            background-color: #475569 !important;
+            border-color: #64748b !important;
+            color: #f8fafc !important;
+        }
+        body.dark-mode .granular-content button:hover,
+        body.dark-mode #refresh-status-btn:hover,
+        body.dark-mode nav a.bg-slate-100:hover,
+        body.dark-mode nav button.bg-slate-100:hover {
+            background-color: #5b6b82 !important;
+            color: #ffffff !important;
+        }
+        body.dark-mode .granular-content button.bg-blue-600 {
+            background-color: #2563eb !important;
+            border-color: #2563eb !important;
+            color: #ffffff !important;
+        }
+        body.dark-mode .bg-slate-50\/70,
+        body.dark-mode .bg-slate-50\/80 {
+            background-color: #273244 !important;
+        }
+        body.dark-mode .bg-blue-100,
+        body.dark-mode .bg-indigo-100,
+        body.dark-mode .bg-emerald-100,
+        body.dark-mode .bg-rose-100,
+        body.dark-mode .bg-amber-100,
+        body.dark-mode .bg-violet-100,
+        body.dark-mode .bg-sky-100 {
+            background-color: #334155 !important;
+            color: #dbe4f0 !important;
+        }
+        body.dark-mode .bg-blue-50,
+        body.dark-mode .bg-indigo-50,
+        body.dark-mode .bg-emerald-50,
+        body.dark-mode .bg-rose-50,
+        body.dark-mode .bg-amber-50,
+        body.dark-mode .bg-violet-50 {
+            background-color: #273244 !important;
+            color: #dbe4f0 !important;
+        }
+        body.dark-mode .border-blue-200,
+        body.dark-mode .border-indigo-200,
+        body.dark-mode .border-emerald-200,
+        body.dark-mode .border-rose-200,
+        body.dark-mode .border-amber-200,
+        body.dark-mode .border-violet-200 {
+            border-color: #475569 !important;
+        }
+        body.dark-mode [class*="text-blue-6"],
+        body.dark-mode [class*="text-indigo-6"],
+        body.dark-mode [class*="text-emerald-6"],
+        body.dark-mode [class*="text-rose-6"],
+        body.dark-mode [class*="text-amber-6"],
+        body.dark-mode [class*="text-violet-6"] {
+            color: #b9cbef !important;
+        }
+        body.dark-mode i[class*="text-blue-"],
+        body.dark-mode i[class*="text-indigo-"],
+        body.dark-mode i[class*="text-emerald-"],
+        body.dark-mode i[class*="text-rose-"],
+        body.dark-mode i[class*="text-amber-"],
+        body.dark-mode i[class*="text-violet-"] {
+            color: #b9cbef !important;
+        }
+        body.dark-mode .bg-blue-600,
+        body.dark-mode .bg-indigo-600,
+        body.dark-mode .bg-emerald-600,
+        body.dark-mode .bg-rose-600,
+        body.dark-mode .bg-amber-600 {
+            background-color: #3b82f6 !important;
+            color: #ffffff !important;
+        }
+        .brand-accent { color: #2563eb !important; }
+        body.dark-mode .brand-accent { color: #2563eb !important; }
+        body.dark-mode #output {
+            background: #273244 !important;
+            color: #cbd5e1 !important;
+            border-color: #64748b !important;
         }
         nav {
             position: relative !important;
@@ -28,6 +155,13 @@
             max-width: 92rem !important;
             padding-top: 2rem !important;
             padding-bottom: 2.5rem !important;
+        }
+        /* bring section headers/cards closer to service-catalog visual rhythm */
+        h2 {
+            letter-spacing: -0.01em;
+        }
+        section > div.relative.overflow-hidden > div.relative {
+            padding: 1.5rem !important;
         }
         main section > div.relative.overflow-hidden,
         #automation-override-notice,
@@ -142,12 +276,12 @@
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-900">
     <!-- Navbar -->
-    <nav class="bg-white border-b border-slate-200 shadow-sm">
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 items-center">
                 <div class="flex items-center gap-3">
-                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="h-8 w-auto">
-                    <h1 class="text-xl font-bold tracking-tight text-slate-900">CLUSTER <span class="text-blue-600 font-extrabold">MANAGER</span></h1>
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="app-logo h-8 w-auto">
+                    <h1 class="text-xl font-bold tracking-tight text-slate-900">CLUSTER <span class="brand-accent font-extrabold">MANAGER</span></h1>
                 </div>
                 <div class="flex items-center gap-3">
                     <button id="refresh-status-btn" onclick="forceRefreshStatus(this)" class="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors flex items-center gap-2 bg-slate-100 hover:bg-blue-50 px-4 py-2 rounded-lg group">
@@ -166,6 +300,11 @@
                         <i class="fas fa-calendar-alt text-sm"></i>
                         <span>Reservations</span>
                     </a>
+                    <button type="button" id="themeToggle" onclick="toggleTheme()"
+                        title="Dark Mode" aria-label="Dark Mode"
+                        class="inline-flex items-center justify-center w-9 h-9 text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors bg-slate-100 hover:bg-blue-50 rounded-lg">
+                        <i class="fas fa-moon"></i>
+                    </button>
                     <a href="{{ url_for('logout') }}" class="text-sm font-semibold text-slate-600 hover:text-red-600 transition-colors flex items-center gap-2 bg-slate-100 hover:bg-red-50 px-4 py-2 rounded-lg">
                         <i class="fas fa-sign-out-alt text-sm"></i>
                         <span>Logout</span>
@@ -175,7 +314,7 @@
         </div>
     </nav>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main class="max-w-[92rem] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Automation Override Notice -->
         <div id="automation-override-notice" class="mb-6 hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-r from-indigo-50/80 to-blue-50/80 p-5 shadow-sm ring-1 ring-indigo-500/5 animate-in fade-in slide-in-from-top-4 duration-500">
             <div class="flex items-start gap-4">
@@ -865,6 +1004,33 @@
     </dialog>
 
     <script>
+        function applyTheme(theme) {
+            const isDark = theme === 'dark';
+            document.body.classList.toggle('dark-mode', isDark);
+            const toggle = document.getElementById('themeToggle');
+            if (!toggle) return;
+            const icon = toggle.querySelector('i');
+            if (icon) icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+            const label = isDark ? 'Light Mode' : 'Dark Mode';
+            toggle.setAttribute('title', label);
+            toggle.setAttribute('aria-label', label);
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('ntnxlablinks_theme');
+            if (savedTheme) {
+                applyTheme(savedTheme);
+                return;
+            }
+            applyTheme('dark');
+        }
+
+        function toggleTheme() {
+            const nextTheme = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
+            localStorage.setItem('ntnxlablinks_theme', nextTheme);
+            applyTheme(nextTheme);
+        }
+
         function showTab(tabId, btn) {
             // Hide all content
             document.querySelectorAll('.granular-content').forEach(el => el.classList.add('hidden'));
@@ -1433,6 +1599,7 @@
         }
 
         window.onload = function() {
+            initTheme();
             if (!sessionStorage.getItem('disclaimerShown')) {
                 toggleDisclaimer();
                 sessionStorage.setItem('disclaimerShown', 'true');
