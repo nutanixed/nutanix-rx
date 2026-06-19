@@ -346,29 +346,54 @@ def check_mgmt_status():
 
             # Create a map of name -> vm for quick lookup
             vm_map = {vm.get('spec', {}).get('name', ''): vm for vm in entities}
-            
+
+            # Support both exact VM names and prefix patterns.
+            # Any entry that ends with "_" is treated as a prefix.
+            matched_vms = []
             for target_name in mgmt_vm_names:
-                vm = vm_map.get(target_name)
-                if not vm:
-                    logger.warning(f"MGMT VM '{target_name}' not found in PC entities")
-                    return "down" # Missing a required VM
-                
+                if target_name.endswith("_"):
+                    prefix_matches = [
+                        vm for vm_name, vm in vm_map.items()
+                        if vm_name and vm_name.startswith(target_name)
+                    ]
+                    if not prefix_matches:
+                        logger.warning(f"No MGMT VMs found with prefix '{target_name}'")
+                        return "down"
+                    matched_vms.extend(prefix_matches)
+                else:
+                    vm = vm_map.get(target_name)
+                    if not vm:
+                        logger.warning(f"MGMT VM '{target_name}' not found in PC entities")
+                        return "down" # Missing a required VM
+                    matched_vms.append(vm)
+
+            # De-duplicate VMs when exact and prefix entries overlap
+            unique_matched_vms = []
+            seen_vm_names = set()
+            for vm in matched_vms:
+                vm_name = vm.get('spec', {}).get('name', '')
+                if vm_name and vm_name not in seen_vm_names:
+                    unique_matched_vms.append(vm)
+                    seen_vm_names.add(vm_name)
+
+            for vm in unique_matched_vms:
+                vm_name = vm.get('spec', {}).get('name', '')
                 power_state = vm.get('status', {}).get('resources', {}).get('power_state', '').upper()
                 if power_state not in ['ON', 'POWERED_ON']:
-                    logger.warning(f"MGMT VM '{target_name}' is in power state: {power_state}")
+                    logger.warning(f"MGMT VM '{vm_name}' is in power state: {power_state}")
                     return "down"
-                
+
                 # Check reachability if powered on
                 ip = vm.get('status', {}).get('resources', {}).get('nic_list', [{}])[0].get('ip_endpoint_list', [{}])[0].get('ip')
                 if not ip:
-                    logger.warning(f"MGMT VM '{target_name}' has no IP reported by PC")
+                    logger.warning(f"MGMT VM '{vm_name}' has no IP reported by PC")
                     return "down"
-                    
+
                 # Ping via PC_IP as proxy
                 proxy_cmd = f"sshpass -p '{os.getenv('SSH_PASS')}' ssh -o StrictHostKeyChecking=no -o ConnectTimeout=2 {os.getenv('SSH_USER')}@{PC_IP} 'ping -c 1 -W 1 {ip}'"
                 res = subprocess.run(proxy_cmd, shell=True, capture_output=True)
                 if res.returncode != 0:
-                    logger.warning(f"MGMT VM '{target_name}' ({ip}) failed ping check via {PC_IP}. Output: {res.stdout.decode() + res.stderr.decode()}")
+                    logger.warning(f"MGMT VM '{vm_name}' ({ip}) failed ping check via {PC_IP}. Output: {res.stdout.decode() + res.stderr.decode()}")
                     return "down"
             
             logger.info("All MGMT VMs are up and reachable")
