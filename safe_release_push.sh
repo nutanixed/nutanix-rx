@@ -36,9 +36,10 @@ Options:
 Behavior:
   1) Validates repository and remote/branch state
   2) Refuses to proceed if local is behind remote
-  3) Stages and commits all local non-ignored changes
-  4) Creates a unique timestamped tag
-  5) Pushes commit + tag (no force)
+  3) Stages and commits all local non-ignored changes (if present)
+  4) If no local changes, reuses current HEAD
+  5) Creates a unique timestamped tag
+  6) Pushes branch + tag (no force)
 EOF
 }
 
@@ -106,17 +107,9 @@ else
   exit 1
 fi
 
-if [[ -z "$(git status --porcelain)" ]]; then
-  echo "No local changes to commit. Aborting."
-  exit 1
-fi
-
-echo "Staging changes ..."
-git add -A
-
-if [[ -z "$(git diff --cached --name-only)" ]]; then
-  echo "Nothing staged after git add -A. Aborting."
-  exit 1
+HAS_LOCAL_CHANGES="false"
+if [[ -n "$(git status --porcelain)" ]]; then
+  HAS_LOCAL_CHANGES="true"
 fi
 
 # Resolve git identity for commit + annotated tag.
@@ -146,8 +139,20 @@ export GIT_AUTHOR_EMAIL="$GIT_EMAIL"
 export GIT_COMMITTER_NAME="$GIT_NAME"
 export GIT_COMMITTER_EMAIL="$GIT_EMAIL"
 
-echo "Creating commit ..."
-git commit -m "$COMMIT_MESSAGE"
+if [[ "$HAS_LOCAL_CHANGES" == "true" ]]; then
+  echo "Staging changes ..."
+  git add -A
+
+  if [[ -z "$(git diff --cached --name-only)" ]]; then
+    echo "Nothing staged after git add -A. Aborting."
+    exit 1
+  fi
+
+  echo "Creating commit ..."
+  git commit -m "$COMMIT_MESSAGE"
+else
+  echo "No local changes detected; using current HEAD for release tag/push."
+fi
 
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 TAG_NAME="${TAG_PREFIX}${TIMESTAMP}"
