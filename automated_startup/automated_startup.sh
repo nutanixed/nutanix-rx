@@ -49,6 +49,7 @@ WAIT_AFTER_MGMT="${WAIT_AFTER_MGMT:-120}"
 WAIT_BEFORE_NKP="${WAIT_BEFORE_NKP:-60}"
 
 STATUS_FILE="/tmp/automated_startup.status"
+STOP_FILE="/tmp/automation.stop_requested"
 
 log() { 
   local msg="[$(date -Iseconds)] $*"
@@ -60,6 +61,14 @@ die() {
   log "ERROR: $*"
   rm -f "$STATUS_FILE"
   exit 1 
+}
+
+check_stop_requested() {
+  if [[ -f "$STOP_FILE" ]]; then
+    log "🛑 Stop requested by admin. Exiting automated startup safely."
+    rm -f "$STOP_FILE"
+    exit 0
+  fi
 }
 
 require_root() {
@@ -77,11 +86,13 @@ run_step() {
   local title="$1"
   local script="$2"
   shift 2
+  check_stop_requested
   log "BEGIN: $title → $script $*"
   bash "${NTNX_CM_ROOT}/${script}" "$@" 2>&1 | while read -r line; do
     log "  $line"
   done
   log "END:   $title (ok)"
+  check_stop_requested
 }
 
 wait_phase() {
@@ -89,7 +100,16 @@ wait_phase() {
   local seconds="$2"
   [[ "$seconds" -gt 0 ]] || return 0
   log "Waiting ${seconds}s — ${label}"
-  sleep "$seconds"
+  local remaining="$seconds"
+  while [[ "$remaining" -gt 0 ]]; do
+    check_stop_requested
+    local chunk=5
+    if [[ "$remaining" -lt 5 ]]; then
+      chunk="$remaining"
+    fi
+    sleep "$chunk"
+    remaining=$((remaining - chunk))
+  done
 }
 
 main() {
@@ -111,6 +131,7 @@ main() {
 
   # Initialize status file
   echo "🚀 Starting automated startup..." > "$STATUS_FILE"
+  check_stop_requested
 
   require_root
 

@@ -19,27 +19,64 @@ IFS=',' read -r -a MGMT_VMS <<< "$MGMT_VM_NAMES"
 
 echo "--- Starting Management VMs ---"
 
-# Discovery logic: find configured VMs from MGMT_VM_NAMES
+# Discovery logic: find configured VMs from MGMT_VM_NAMES.
+# Supports both:
+# - exact names (e.g. system_ldap)
+# - prefix matches via '*' suffix or trailing '_' (e.g. system_* or system_)
 echo "--- Starting Management VMs (Configured in MGMT_VM_NAMES) ---"
 
 # 1. Fetch all VMs
 ALL_VMS_JSON=$(curl -k -s -u "${PC_USER}:${PC_PASS}" -X POST "https://${PC_IP}:9440/api/nutanix/v3/vms/list" \
     -H "Content-Type: application/json" -d '{"kind": "vm", "length": 500}')
 
-# Use MGMT_VM_NAMES from environment if available, otherwise fallback to system_ prefix for discovery
-if [[ -n "$MGMT_VM_NAMES" ]]; then
-    # Create a regex from MGMT_VM_NAMES for jq (e.g., "^(vm1|vm2|vm3)$")
-    NAMES_REGEX="^($(echo "$MGMT_VM_NAMES" | sed 's/,/|/g'))$"
-    FILTER_LOGIC="select(.spec.name | test(\"$NAMES_REGEX\"))"
-    echo "Using configured names: $MGMT_VM_NAMES"
+# Build exact-name and prefix lists for matching.
+declare -a MGMT_EXACT_NAMES=()
+declare -a MGMT_PREFIXES=()
+
+if [[ -n "${MGMT_VM_NAMES:-}" ]]; then
+    for raw_name in "${MGMT_VMS[@]}"; do
+        name="$(echo "$raw_name" | xargs)"
+        [[ -z "$name" ]] && continue
+
+        if [[ "$name" == *"*" ]]; then
+            MGMT_PREFIXES+=("${name%\*}")
+        elif [[ "$name" == *_ ]]; then
+            MGMT_PREFIXES+=("$name")
+        else
+            MGMT_EXACT_NAMES+=("$name")
+        fi
+    done
 else
-    FILTER_LOGIC="select(.spec.name | startswith(\"system_\"))"
-    echo "No MGMT_VM_NAMES found, falling back to 'system_' prefix discovery."
+    MGMT_PREFIXES+=("system_")
 fi
+
+if [[ ${#MGMT_EXACT_NAMES[@]} -gt 0 ]]; then
+    EXACT_NAMES_JSON=$(printf '%s\n' "${MGMT_EXACT_NAMES[@]}" | jq -R . | jq -s .)
+else
+    EXACT_NAMES_JSON='[]'
+fi
+
+if [[ ${#MGMT_PREFIXES[@]} -gt 0 ]]; then
+    PREFIX_NAMES_JSON=$(printf '%s\n' "${MGMT_PREFIXES[@]}" | jq -R . | jq -s .)
+else
+    PREFIX_NAMES_JSON='[]'
+fi
+
+echo "Using configured names: ${MGMT_VM_NAMES:-<none>}"
+echo "Exact-name matches: ${MGMT_EXACT_NAMES[*]:-<none>}"
+echo "Prefix matches: ${MGMT_PREFIXES[*]:-<none>}"
 
 # Filter and extract info
 # Format: UUID|NAME|POWER_STATE
-TARGET_VMS_INFO=$(echo "$ALL_VMS_JSON" | jq -r ".entities[] | ${FILTER_LOGIC} | .metadata.uuid + \"|\" + .spec.name + \"|\" + .status.resources.power_state")
+TARGET_VMS_INFO=$(echo "$ALL_VMS_JSON" | jq -r \
+    --argjson exact_names "$EXACT_NAMES_JSON" \
+    --argjson prefix_names "$PREFIX_NAMES_JSON" \
+    '.entities[] as $vm
+    | select(
+        (($exact_names | index($vm.spec.name)) != null)
+        or any($prefix_names[]?; . as $prefix | ($vm.spec.name | startswith($prefix)))
+      )
+    | $vm.metadata.uuid + "|" + $vm.spec.name + "|" + $vm.status.resources.power_state')
 
 if [[ -z "$TARGET_VMS_INFO" ]]; then
     echo "⚠️ No VMs found matching criteria."
@@ -93,7 +130,15 @@ for (( try=1; try<=MAX_RETRIES; try++ )); do
         -H "Content-Type: application/json" -d '{"kind": "vm", "length": 500}')
     
     # Extract IPs for matching VMs
-    MGMT_VM_IPS=($(echo "$ALL_VMS_JSON" | jq -r ".entities[] | ${FILTER_LOGIC} | .status.resources.nic_list[0].ip_endpoint_list[0].ip? // empty"))
+    MGMT_VM_IPS=($(echo "$ALL_VMS_JSON" | jq -r \
+        --argjson exact_names "$EXACT_NAMES_JSON" \
+        --argjson prefix_names "$PREFIX_NAMES_JSON" \
+        '.entities[] as $vm
+        | select(
+            (($exact_names | index($vm.spec.name)) != null)
+            or any($prefix_names[]?; . as $prefix | ($vm.spec.name | startswith($prefix)))
+          )
+        | $vm.status.resources.nic_list[0].ip_endpoint_list[0].ip? // empty'))
     TOTAL_VMS=${#MGMT_VM_IPS[@]}
     
     if [ "$TOTAL_VMS" -eq 0 ]; then

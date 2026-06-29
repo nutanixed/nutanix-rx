@@ -11,10 +11,12 @@ import time
 import json
 import uuid
 import requests
+import signal
 from datetime import datetime
 from dotenv import load_dotenv
 
-load_dotenv()
+# Prefer values from mounted /app/.env over stale container env vars.
+load_dotenv(override=True)
 
 app = Flask(__name__)
 # If NGINX is on a separate host, ProxyFix is critical for correct redirects and session behavior.
@@ -70,6 +72,7 @@ SSH_PASS = os.getenv("SSH_PASS")
 AUTOMATED_SHUTDOWN_STATUS_FILE = "/tmp/automated_shutdown.status"
 AUTOMATED_STARTUP_STATUS_FILE = "/tmp/automated_startup.status"
 PAUSE_FILE = "/tmp/automation.paused"
+STOP_REQUEST_FILE = "/tmp/automation.stop_requested"
 SCHEDULED_PAUSES_FILE = os.path.join(os.path.dirname(__file__), 'scheduled_pauses.json')
 SCHEDULED_PAUSE_ACTIVE_FILE = "/tmp/scheduled_automation.paused"
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
@@ -353,10 +356,22 @@ def check_mgmt_status():
                     vm_map[vm_name] = vm
 
             # Support both exact VM names and prefix patterns.
-            # Any entry that ends with "_" is treated as a prefix.
+            # Prefix patterns are:
+            # - names ending with "*" (e.g. "system_*")
+            # - names ending with "_" (e.g. "system_")
             matched_vms = []
             for target_name in mgmt_vm_names:
-                if target_name.endswith("_"):
+                if target_name.endswith("*"):
+                    prefix = target_name[:-1]
+                    prefix_matches = [
+                        vm for vm_name, vm in vm_map.items()
+                        if vm_name and vm_name.startswith(prefix)
+                    ]
+                    if not prefix_matches:
+                        logger.warning(f"No MGMT VMs found with prefix '{prefix}'")
+                        return "down"
+                    matched_vms.extend(prefix_matches)
+                elif target_name.endswith("_"):
                     prefix_matches = [
                         vm for vm_name, vm in vm_map.items()
                         if vm_name and vm_name.startswith(target_name)
@@ -669,12 +684,16 @@ def shutdown_mgmt_vms(): return run_job_api('shutdown_mgmt_vms')
 @requires_auth
 def automated_full_startup():
     """Run full-stack startup (Help → Startup Sequence); see automated_startup/automated_startup.sh."""
+    if os.path.exists(STOP_REQUEST_FILE):
+        os.remove(STOP_REQUEST_FILE)
     return run_job(os.path.join('automated_startup', 'automated_startup.sh'), 'automated_full_startup')
 
 @app.route('/automated_full_shutdown')
 @requires_auth
 def automated_full_shutdown():
     """Run full-stack shutdown (Help → Shutdown Sequence); see automated_shutdown/automated_shutdown.sh."""
+    if os.path.exists(STOP_REQUEST_FILE):
+        os.remove(STOP_REQUEST_FILE)
     return run_job(os.path.join('automated_shutdown', 'automated_shutdown.sh'), 'automated_full_shutdown')
 
 @app.route('/api/automation/status')
@@ -989,12 +1008,22 @@ def admin():
 @app.route('/')
 @requires_auth
 def index():
-    return render_template('index.html', console_base_url=os.getenv("CONSOLE_BASE_URL"))
+    return render_template(
+        'index.html',
+        console_base_url=os.getenv("CONSOLE_BASE_URL"),
+        admin_password=os.getenv('ADMIN_PASSWORD')
+    )
 
 import uuid
 
 # Global job store
 jobs = {}
+STOPPABLE_SCRIPT_NAMES = {
+    "automated_full_shutdown",
+    "automated_full_startup",
+    "shutdown",
+    "startup"
+}
 
 class Job:
     def __init__(self, script_path, script_name=None, args=None):
@@ -1006,6 +1035,7 @@ class Job:
         self.output = "🚀 Starting operation...\n\n"
         self.exit_code = None
         self.start_time = time.time()
+        self.process = None
         self.thread = threading.Thread(target=self._run)
         self.thread.start()
 
@@ -1018,7 +1048,9 @@ class Job:
                                      stdin=subprocess.PIPE,
                                      text=True,
                                      bufsize=1,
-                                     universal_newlines=True)
+                                     universal_newlines=True,
+                                     start_new_session=True)
+            self.process = process
             
             # Automatically send "yes" to the script if it prompts for confirmation
             try:
@@ -1040,6 +1072,27 @@ class Job:
             with jobs_lock:
                 self.status = "failed"
                 self.output += f"\n❌ System Error: {str(e)}\n"
+        finally:
+            with jobs_lock:
+                self.process = None
+
+    def stop(self):
+        with jobs_lock:
+            if self.status != "running" or not self.process:
+                return False
+            pid = self.process.pid
+        try:
+            os.killpg(pid, signal.SIGTERM)
+            with jobs_lock:
+                self.output += "\n🛑 Stop requested by admin (SIGTERM sent).\n"
+                self.status = "stopping"
+            return True
+        except ProcessLookupError:
+            return False
+        except Exception as e:
+            with jobs_lock:
+                self.output += f"\n❌ Failed to stop process: {e}\n"
+            return False
 
 def run_job(script_file, script_name=None, args=None):
     script_path = os.path.join(os.path.dirname(__file__), script_file)
@@ -1048,11 +1101,37 @@ def run_job(script_file, script_name=None, args=None):
         jobs[job.id] = job
     return {"job_id": job.id}
 
+def is_external_automation_running(kind):
+    """
+    Returns True if an external automated startup/shutdown script process is alive.
+    This avoids false "running" state from stale status files left in /tmp.
+    """
+    pattern_map = {
+        "shutdown": r"/app/automated_shutdown/automated_shutdown\.sh",
+        "startup": r"/app/automated_startup/automated_startup\.sh",
+    }
+    pattern = pattern_map.get(kind)
+    if not pattern:
+        return False
+    try:
+        result = subprocess.run(
+            ['ps', '-eo', 'args'],
+            capture_output=True,
+            text=True,
+            timeout=2
+        )
+        if result.returncode != 0:
+            return False
+        return re.search(pattern, result.stdout) is not None
+    except Exception:
+        return False
+
 @app.route('/api/job_status/<job_id>')
 @requires_auth
 def job_status(job_id):
     if job_id == "external_shutdown":
-        if os.path.exists(AUTOMATED_SHUTDOWN_STATUS_FILE):
+        is_running = is_external_automation_running("shutdown")
+        if os.path.exists(AUTOMATED_SHUTDOWN_STATUS_FILE) and is_running:
             try:
                 with open(AUTOMATED_SHUTDOWN_STATUS_FILE, 'r') as f:
                     output = f.read()
@@ -1075,7 +1154,8 @@ def job_status(job_id):
             }
     
     if job_id == "external_startup":
-        if os.path.exists(AUTOMATED_STARTUP_STATUS_FILE):
+        is_running = is_external_automation_running("startup")
+        if os.path.exists(AUTOMATED_STARTUP_STATUS_FILE) and is_running:
             try:
                 with open(AUTOMATED_STARTUP_STATUS_FILE, 'r') as f:
                     output = f.read()
@@ -1123,7 +1203,7 @@ def active_jobs():
                 })
         
         # Check for external automated shutdown
-        if os.path.exists(AUTOMATED_SHUTDOWN_STATUS_FILE):
+        if os.path.exists(AUTOMATED_SHUTDOWN_STATUS_FILE) and is_external_automation_running("shutdown"):
             # Check if it's already in active (triggered via UI)
             is_already_tracked = False
             for job in active:
@@ -1141,7 +1221,7 @@ def active_jobs():
                 })
 
         # Check for external automated startup
-        if os.path.exists(AUTOMATED_STARTUP_STATUS_FILE):
+        if os.path.exists(AUTOMATED_STARTUP_STATUS_FILE) and is_external_automation_running("startup"):
             is_already_tracked = False
             for job in active:
                 if job['script_name'] == 'automated_full_startup':
@@ -1159,6 +1239,66 @@ def active_jobs():
         # Sort by start time, newest first
         active.sort(key=lambda x: x['start_time'], reverse=True)
         return {"active_jobs": active}
+
+@app.route('/api/automation/stop_active', methods=['POST'])
+@requires_auth
+def automation_stop_active_api():
+    """
+    Stop currently running startup/shutdown automation launched via this app.
+    Also enforces pause to prevent immediate re-trigger by scheduler.
+    """
+    stopped_jobs = []
+    failed_jobs = []
+    external_stop_requested = []
+
+    # Always create pause marker first so scheduler will not start new runs.
+    try:
+        with open(PAUSE_FILE, 'w') as f:
+            f.write("paused")
+    except Exception as e:
+        return {"error": f"Failed to pause scheduler: {e}"}, 500
+
+    with jobs_lock:
+        running_jobs = [
+            (job_id, job)
+            for job_id, job in jobs.items()
+            if job.status == "running" and (job.script_name in STOPPABLE_SCRIPT_NAMES)
+        ]
+
+    for job_id, job in running_jobs:
+        if job.stop():
+            stopped_jobs.append({"id": job_id, "script_name": job.script_name})
+        else:
+            failed_jobs.append({"id": job_id, "script_name": job.script_name})
+
+    external_shutdown_running = os.path.exists(AUTOMATED_SHUTDOWN_STATUS_FILE) and not any(
+        j["script_name"] == "automated_full_shutdown" for j in stopped_jobs
+    )
+    external_startup_running = os.path.exists(AUTOMATED_STARTUP_STATUS_FILE) and not any(
+        j["script_name"] == "automated_full_startup" for j in stopped_jobs
+    )
+
+    if external_shutdown_running or external_startup_running:
+        try:
+            with open(STOP_REQUEST_FILE, 'w') as f:
+                f.write(f"requested_at={datetime.now().isoformat()}\n")
+            if external_shutdown_running:
+                external_stop_requested.append({"id": "external_shutdown", "script_name": "automated_full_shutdown"})
+            if external_startup_running:
+                external_stop_requested.append({"id": "external_startup", "script_name": "automated_full_startup"})
+        except Exception as e:
+            if external_shutdown_running:
+                failed_jobs.append({"id": "external_shutdown", "script_name": "automated_full_shutdown", "error": str(e)})
+            if external_startup_running:
+                failed_jobs.append({"id": "external_startup", "script_name": "automated_full_startup", "error": str(e)})
+
+    return {
+        "success": True,
+        "scheduler_paused": True,
+        "stopped_jobs": stopped_jobs,
+        "failed_jobs": failed_jobs,
+        "external_stop_requested": external_stop_requested
+    }
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5005, debug=True)

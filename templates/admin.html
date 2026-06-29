@@ -184,6 +184,12 @@
             color: #ffffff !important;
             border-color: transparent !important;
         }
+        body.dark-mode #confirm-modal button.bg-slate-100,
+        body.dark-mode #password-modal button.bg-slate-100 {
+            background-color: #475569 !important;
+            color: #f8fafc !important;
+            border: 1px solid #64748b !important;
+        }
         /* Reservation entry is now modal-based; keep card clipping clean. */
     </style>
 </head>
@@ -274,6 +280,12 @@
                                 <div class="flex items-center justify-center relative z-10">
                                     <i id="icon-automation" class="fas fa-pause mr-3 group-hover:rotate-12 transition-transform"></i>
                                     <span id="text-automation">Disable Scheduler</span>
+                                </div>
+                            </button>
+                            <button id="btn-stop-active" onclick="stopActiveAutomation()" class="w-full group relative overflow-hidden px-6 py-4 rounded-2xl bg-rose-700 text-white text-xs font-black uppercase tracking-[0.2em] transition-all hover:bg-rose-600 active:scale-[0.98] shadow-xl shadow-rose-700/20">
+                                <div class="flex items-center justify-center relative z-10">
+                                    <i class="fas fa-stop-circle mr-3"></i>
+                                    <span>Stop Running Process</span>
                                 </div>
                             </button>
                         </div>
@@ -763,22 +775,68 @@
 
         async function toggleAutomation() {
             const btn = document.getElementById('btn-automation-toggle');
-            const isPaused = btn.innerText.includes('Enable');
-            
-            // Password protection
-            showPasswordModal("Enter password to " + (isPaused ? "enable" : "disable") + " scheduler:", (isPaused ? "Enable" : "Disable") + " Scheduler", async () => {
-                const endpoint = isPaused ? "{{ url_for('automation_unpause_api') }}" : "{{ url_for('automation_pause_api') }}";
-                
-                btn.classList.add('btn-loading');
-                try {
-                    const response = await fetch(endpoint, { method: 'POST' });
-                    if (!response.ok) throw new Error("Server error");
-                    await updateAutomationUI();
-                } catch (err) {
-                    showModal("Failed to update scheduler: " + err.message);
-                } finally {
-                    btn.classList.remove('btn-loading');
-                }
+            if (btn.disabled) {
+                showModal("Scheduler toggle is disabled while an Extended Uptime reservation is active.");
+                return;
+            }
+
+            try {
+                const statusRes = await fetch("{{ url_for('automation_status_api') }}");
+                const statusData = await statusRes.json();
+                const isPaused = Boolean(statusData.paused);
+
+                // Password protection
+                showPasswordModal("Enter password to " + (isPaused ? "enable" : "disable") + " scheduler:", (isPaused ? "Enable" : "Disable") + " Scheduler", async () => {
+                    const endpoint = isPaused ? "{{ url_for('automation_unpause_api') }}" : "{{ url_for('automation_pause_api') }}";
+                    
+                    btn.classList.add('btn-loading');
+                    try {
+                        const response = await fetch(endpoint, { method: 'POST' });
+                        if (!response.ok) throw new Error("Server error");
+                        await updateAutomationUI();
+                    } catch (err) {
+                        showModal("Failed to update scheduler: " + err.message);
+                    } finally {
+                        btn.classList.remove('btn-loading');
+                    }
+                });
+            } catch (err) {
+                showModal("Failed to read scheduler state: " + err.message);
+            }
+        }
+
+        async function stopActiveAutomation() {
+            showPasswordModal("Enter password to stop active startup/shutdown process:", "Emergency Stop", () => {
+                showConfirm("Stop all currently running startup/shutdown processes and pause scheduler?", async () => {
+                    const btn = document.getElementById('btn-stop-active');
+                    btn.classList.add('btn-loading');
+                    try {
+                        const response = await fetch("{{ url_for('automation_stop_active_api') }}", {
+                            method: 'POST'
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.error || "Unable to stop automation.");
+                        }
+
+                        const stoppedCount = (data.stopped_jobs || []).length;
+                        const externalRequestedCount = (data.external_stop_requested || []).length;
+                        const failedCount = (data.failed_jobs || []).length;
+                        let msg = `Stop request sent. ${stoppedCount} app job(s) stopped.`;
+                        if (externalRequestedCount > 0) {
+                            msg += ` ${externalRequestedCount} external run(s) received a graceful stop request and should exit shortly.`;
+                        }
+                        if (failedCount > 0) {
+                            msg += ` ${failedCount} job(s) could not be signaled from UI and may require host sudo kill.`;
+                        }
+                        showModal(msg);
+                        await updateAutomationUI();
+                    } catch (err) {
+                        showModal("Failed to stop active process: " + err.message);
+                    } finally {
+                        btn.classList.remove('btn-loading');
+                    }
+                });
             });
         }
 
