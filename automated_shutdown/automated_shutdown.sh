@@ -89,6 +89,20 @@ require_root() {
   done
 }
 
+require_commands() {
+  local missing=()
+  local cmd
+  for cmd in bash curl jq awk; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      missing+=("$cmd")
+    fi
+  done
+
+  if [[ "${#missing[@]}" -gt 0 ]]; then
+    die "Missing required command(s): ${missing[*]}. Install them in the runtime container before running automated shutdown."
+  fi
+}
+
 run_step() {
   local title="$1"
   local script="$2"
@@ -144,6 +158,7 @@ main() {
   check_stop_requested
   
   require_root
+  require_commands
   
   log "========== Automated shutdown (NTNX_CM_ROOT=${NTNX_CM_ROOT}) =========="
   

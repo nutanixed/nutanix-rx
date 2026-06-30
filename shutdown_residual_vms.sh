@@ -86,7 +86,8 @@ for (( try=1; try<=MAX_RETRIES; try++ )); do
         exit 0
     fi
 
-    count="$(echo "${STILL_ON_LINES}" | rg -c ".")"
+    # Count non-empty lines without requiring ripgrep in the runtime container.
+    count="$(printf '%s\n' "${STILL_ON_LINES}" | awk 'NF { c++ } END { print c+0 }')"
     echo "Attempt ${try}/${MAX_RETRIES}: ${count} residual VM(s) still on."
     if [ "${try}" -lt "${MAX_RETRIES}" ]; then
         sleep "${RETRY_DELAY}"
