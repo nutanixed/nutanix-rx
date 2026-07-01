@@ -597,7 +597,6 @@
             applyTheme(nextTheme);
         }
 
-        const ADMIN_PWD = "{{ admin_password }}";
         let confirmCallback = null;
         let passwordCallback = null;
 
@@ -711,10 +710,21 @@
             if (confirmCallback) confirmCallback();
         });
 
-        document.getElementById('password-submit-btn').addEventListener('click', () => {
+        document.getElementById('password-submit-btn').addEventListener('click', async () => {
             const input = document.getElementById('admin-password-input').value;
-            if (input !== ADMIN_PWD) {
-                showModal("Incorrect password.");
+            try {
+                const response = await fetch("{{ url_for('validate_admin_password_api') }}", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ password: input })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    showModal(data.error || "Incorrect password.");
+                    return;
+                }
+            } catch (err) {
+                showModal("Password validation failed: " + err.message);
                 return;
             }
             document.getElementById('password-modal').close();

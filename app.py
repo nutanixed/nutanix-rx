@@ -12,6 +12,7 @@ import json
 import uuid
 import requests
 import signal
+import hmac
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -993,6 +994,21 @@ def recover_nai_token():
         return {"error": "Token is required"}, 400
     
     return run_job('update_nai_token.sh', 'recover_nai_token', args=[token])
+
+@app.route('/api/validate_admin_password', methods=['POST'])
+@requires_auth
+def validate_admin_password_api():
+    data = request.get_json(silent=True) or {}
+    provided_password = data.get("password", "")
+    configured_password = os.getenv("ADMIN_PASSWORD", "")
+
+    if not configured_password:
+        return {"error": "ADMIN_PASSWORD is not configured on server."}, 500
+
+    if not hmac.compare_digest(str(provided_password), str(configured_password)):
+        return {"error": "Incorrect password."}, 401
+
+    return {"ok": True}
 
 @app.route('/recover_cluster_pods')
 @requires_auth
